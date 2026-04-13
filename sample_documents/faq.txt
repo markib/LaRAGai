@@ -1,0 +1,13 @@
+FAQ
+
+Q: How does LaRAGai ingest documents?
+A: It reads file contents and queues them for processing using the `rag:ingest` Artisan command.
+
+Q: What embedding model is used?
+A: The current setup uses Ollama local embeddings, configured via `OLLAMA_EMBEDDING_MODEL`.
+
+Q: Where are vectors stored?
+A: Vectors are stored in Qdrant, with the collection defined by `QDRANT_COLLECTION` and vector name `embeddings`.
+
+Q: How can I test the ingestion flow?
+A: Run `php artisan rag:ingest sample_documents` then process the queue with `php artisan queue:work`.

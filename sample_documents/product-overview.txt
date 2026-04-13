@@ -1,0 +1,12 @@
+Product Overview
+
+LaRAGai is a retrieval-augmented generation application built with Laravel. It stores documents in Qdrant and uses local Ollama embeddings for semantic search.
+
+Key features:
+- Document ingestion from files and text
+- Embedding generation using local Ollama models
+- Vector search with Qdrant
+- Retrieval-augmented answering for user queries
+
+Use Case:
+A user can upload a document and later ask questions about its content. The system returns relevant documents and generates answers from the retrieved context.
