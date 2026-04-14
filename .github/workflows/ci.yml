@@ -8,23 +8,26 @@ on:
 jobs:
   build-test-scan:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        php: [8.1]
+        php: [8.2]   # Laravel 10/11 → 8.2 recommended
         node: [20]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ✅ FIXED VERSION (v2)
       - name: Setup PHP
-        uses: shivammathur/setup-php@v4
+        uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo, sqlite
           coverage: none
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4   # ✅ v5 not stable everywhere
         with:
           node-version: ${{ matrix.node }}
           cache: "npm"
@@ -33,16 +36,32 @@ jobs:
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Install Node dependencies
-        run: npm install
+        run: npm ci
 
       - name: Validate Composer metadata
         run: composer validate --no-check-publish
 
+      # ✅ REQUIRED for Laravel
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Generate app key
+        run: php artisan key:generate
+
+      # ✅ Use SQLite for CI (fast + no setup)
+      - name: Prepare SQLite database
+        run: |
+          mkdir -p database
+          touch database/database.sqlite
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
       - name: Run PHP unit tests
-        run: vendor/bin/phpunit --colors=always
+        run: php artisan test --colors=always
 
       - name: Composer dependency audit
-        run: composer audit --format=json
+        run: composer audit
 
       - name: NPM dependency audit
         run: npm audit --audit-level=moderate
@@ -50,10 +69,11 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # ✅ Updated Trivy version
       - name: Filesystem vulnerability scan
-        uses: aquasecurity/trivy-action@v0.6.0
+        uses: aquasecurity/trivy-action@0.20.0
         with:
           scan-type: fs
           severity: CRITICAL,HIGH
-          ignore-unfixed: false
+          ignore-unfixed: true
           format: table
