@@ -32,6 +32,27 @@ function App() {
     }
   };
 
+  const readJsonFromStream = async (body: ReadableStream<Uint8Array> | null) => {
+    if (!body) {
+      throw new Error('Readable stream is not available.');
+    }
+
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let raw = '';
+    let done = false;
+
+    while (!done) {
+      const result = await reader.read();
+      done = result.done ?? false;
+      if (result.value) {
+        raw += decoder.decode(result.value, { stream: !done });
+      }
+    }
+
+    return JSON.parse(raw) as QueryResponse;
+  };
+
   const submitQuery = async () => {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) {
@@ -60,7 +81,10 @@ function App() {
         throw new Error(`Request failed with status ${res.status}`);
       }
 
-      const data: QueryResponse = await res.json();
+      const data: QueryResponse = res.body
+        ? await readJsonFromStream(res.body)
+        : await res.json();
+
       setResponse(data);
       setDocuments(data.documents);
       setPendingAnswer(data.answer);
@@ -158,3 +182,5 @@ const rootElement = document.getElementById('root');
 if (rootElement) {
   createRoot(rootElement).render(<App />);
 }
+
+export default App;

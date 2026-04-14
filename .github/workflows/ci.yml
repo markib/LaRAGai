@@ -1,0 +1,59 @@
+name: CI / DevSecOps
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: [8.1]
+        node: [20]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v4
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: "npm"
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Validate Composer metadata
+        run: composer validate --no-check-publish
+
+      - name: Run PHP unit tests
+        run: vendor/bin/phpunit --colors=always
+
+      - name: Composer dependency audit
+        run: composer audit --format=json
+
+      - name: NPM dependency audit
+        run: npm audit --audit-level=moderate
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Filesystem vulnerability scan
+        uses: aquasecurity/trivy-action@v0.6.0
+        with:
+          scan-type: fs
+          severity: CRITICAL,HIGH
+          ignore-unfixed: false
+          format: table

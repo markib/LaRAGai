@@ -5,13 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Document extends Model
+class DocumentChunk extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['source', 'content', 'metadata'];
+    protected $fillable = [
+        'document_id',
+        'content',
+        'metadata',
+        'embedding',
+    ];
 
     protected $casts = [
         'metadata' => 'array',
+        'embedding' => 'array',
     ];
 }

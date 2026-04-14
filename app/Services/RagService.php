@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Services;
-
+use App\Models\DocumentChunk;
 use App\Repositories\ConversationRepository;
 use App\Repositories\DocumentRepository;
 use App\Repositories\VectorRepositoryInterface;
@@ -24,14 +24,58 @@ class RagService
     public function ingestDocument(string $source, string $content, array $metadata = []): array
     {
         $document = $this->documents->createOrUpdate($source, $content, $metadata);
-        $embedding = $this->embedder->embed($content);
+        $chunks = $this->chunkContent($content);
 
-        $this->vectors->saveEmbedding($document['id'], $embedding, [
-            'source' => $source,
-            'metadata' => $metadata,
-        ]);
+        foreach ($chunks as $index => $chunkText) {
+            $chunk = DocumentChunk::create([
+                'document_id' => $document['id'],
+                'content' => $chunkText,
+                'metadata' => array_merge($metadata, ['chunk_index' => $index]),
+                'embedding' => $this->embedder->embed($chunkText),
+            ]);
+
+            $this->vectors->saveEmbedding($document['id'], $chunk->embedding, [
+                'source' => $source,
+                'document_id' => $document['id'],
+                'chunk_id' => $chunk->id,
+                'chunk_index' => $index,
+            ]);
+        }
 
         return $document;
+    }
+
+    protected function chunkContent(string $content, int $chunkSize = 512, int $overlap = 64): array
+    {
+        $content = trim(preg_replace('/\s+/', ' ', $content));
+
+        if ($content === '') {
+            return [];
+        }
+
+        $words = explode(' ', $content);
+        $chunks = [];
+        $current = [];
+        $currentLength = 0;
+
+        foreach ($words as $word) {
+            $wordLength = mb_strlen($word) + 1;
+
+            if ($currentLength + $wordLength > $chunkSize && count($current) > 0) {
+                $chunks[] = implode(' ', $current);
+                $current = array_slice($current, max(0, count($current) - $overlap));
+                $currentLength = mb_strlen(implode(' ', $current));
+            }
+
+            $current[] = $word;
+            $currentLength += $wordLength;
+        }
+
+        if (! empty($current)) {
+            $chunks[] = implode(' ', $current);
+        }
+
+        return $chunks;
     }
 
     public function retrieve(string $query, int $limit = 5): array
