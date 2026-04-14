@@ -17,7 +17,14 @@ class TestCommand extends Command
         $options = $this->buildOptions();
 
         $command = PHP_BINARY . ' ' . escapeshellarg($binary) . ' ' . implode(' ', array_map('escapeshellarg', $options));
-        $process = Process::fromShellCommandline($command, base_path());
+        $process = Process::fromShellCommandline($command, base_path(), [
+            'APP_ENV' => 'testing',
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => base_path('database/testing.sqlite'),
+            'QUEUE_CONNECTION' => 'sync',
+            'SESSION_DRIVER' => 'array',
+            'RAG_VECTOR_STORE' => 'local',
+        ]);
         $process->setTimeout(null);
         $process->run(function ($type, $buffer): void {
             $this->output->write($buffer);
