@@ -22,7 +22,7 @@ class VectorRepository implements VectorRepositoryInterface
         if (config('database.default') === 'pgsql') {
             $vectorLiteral = '[' . implode(',', array_map(fn ($item) => is_numeric($item) ? $item : floatval($item), $vector)) . ']';
 
-            return VectorRecord::selectRaw('document_id, 1 / (1 + (vector <-> ?::vector)) as score', [$vectorLiteral])
+            return VectorRecord::selectRaw('document_id, 1 / (1 + (vector <=> ?::vector)) as score', [$vectorLiteral])
                 ->orderByDesc('score')
                 ->limit($limit)
                 ->get()

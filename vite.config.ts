@@ -13,4 +13,10 @@ export default defineConfig({
   server: {
     hmr: false,
   },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: 'resources/js/tests/setupTests.ts',
+    include: ['resources/js/tests/**/*.test.tsx'],
+  },
 });

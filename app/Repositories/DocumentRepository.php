@@ -21,6 +21,7 @@ class DocumentRepository
 
     public function findByIds(array $ids): array
     {
+        $ids = array_values(array_unique($ids));
         $documents = Document::whereIn('id', $ids)
             ->get()
             ->keyBy('id');
