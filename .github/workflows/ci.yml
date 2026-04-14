@@ -71,7 +71,7 @@ jobs:
 
       # ✅ Updated Trivy version
       - name: Filesystem vulnerability scan
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@v0.14.0
         with:
           scan-type: fs
           severity: CRITICAL,HIGH
