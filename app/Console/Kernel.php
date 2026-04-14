@@ -2,12 +2,15 @@
 
 namespace App\Console;
 
+use App\Console\Commands\TestCommand;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
-    protected $commands = [];
+    protected $commands = [
+        TestCommand::class,
+    ];
 
     protected function schedule(Schedule $schedule): void
     {
