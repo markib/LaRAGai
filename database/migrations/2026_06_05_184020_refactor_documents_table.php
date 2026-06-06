@@ -12,24 +12,42 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('documents', function (Blueprint $table) {
-            $table->string('filename')->nullable();
-            $table->string('original_filename')->nullable();
+            if (!Schema::hasColumn('documents', 'filename')) {
+                $table->string('filename')->nullable();
+            }
 
-            $table->string('disk')->default('local');
-            $table->string('path')->nullable();
+            if (!Schema::hasColumn('documents', 'original_filename')) {
+                $table->string('original_filename')->nullable();
+            }
 
-            $table->string('mime_type')->nullable();
+            if (!Schema::hasColumn('documents', 'disk')) {
+                $table->string('disk')->default('local');
+            }
 
-            $table->bigInteger('size')->default(0);
+            if (!Schema::hasColumn('documents', 'path')) {
+                $table->string('path')->nullable();
+            }
 
-            $table->enum('status', [
-                'uploaded',
-                'processing',
-                'indexed',
-                'failed',
-            ])->default('uploaded');
+            if (!Schema::hasColumn('documents', 'mime_type')) {
+                $table->string('mime_type')->nullable();
+            }
 
-            $table->text('error_message')->nullable();
+            if (!Schema::hasColumn('documents', 'size')) {
+                $table->bigInteger('size')->default(0);
+            }
+
+            if (!Schema::hasColumn('documents', 'status')) {
+                $table->enum('status', [
+                    'uploaded',
+                    'processing',
+                    'indexed',
+                    'failed',
+                ])->default('uploaded');
+            }
+
+            if (!Schema::hasColumn('documents', 'error_message')) {
+                $table->text('error_message')->nullable();
+            }
         });
     }
 
