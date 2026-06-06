@@ -12,11 +12,15 @@ class DocumentFactory extends Factory
     public function definition(): array
     {
         return [
-            'source' => $this->faker->unique()->slug() . '.txt',
-            'content' => $this->faker->paragraphs(4, true),
-            'metadata' => [
-                'imported_at' => now()->toISOString(),
-            ],
+            'filename' => fake()->uuid() . '.pdf',
+            'original_filename' => fake()->word() . '.pdf',
+            'disk' => 'local',
+            'path' => 'documents/sample.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => fake()->numberBetween(1000, 50000),
+            'status' => 'uploaded',
+            'error_message' => null,
+            'source' => fake()->word(),
         ];
     }
 }
