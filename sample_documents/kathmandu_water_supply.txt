@@ -1,0 +1,17 @@
+DOCUMENT_ID: NP-PLUMB-001
+TITLE: Kathmandu Valley Municipal Water Supply & Tank Setup Guide
+CATEGORY: Municipal Grid Integration
+
+Overview:
+Most residential properties in the Kathmandu Valley (Kathmandu, Lalitpur, Bhaktapur) rely on intermittent water delivery supplied by Kathmandu Upatyeka Khanepani Limited (KUKL). Because municipal lines only provide water for roughly 1.5 to 3 hours every few days, a dual-tank configuration is standard infrastructure.
+
+Standard Architecture:
+1. Underground Sump Tank (Zameen Muni ko Tanki): Collects raw municipal water directly from the street line. Requires a low-pressure check valve (non-return valve) to prevent backflow and cross-contamination when the municipal grid loses pressure.
+2. Transfer Pump: A 0.5 to 1.5 HP centrifugal pump pulls water from the underground sump to the roof.
+3. Overhead Header Tank (Chhat ko Tanki): Typically 1000L to 2000L polyethylene (poly) tanks supplying the gravity-fed internal home plumbing.
+
+Common Failures & Solutions:
+- Problem: Low pressure to top floors.
+- Solution: The gravity head from a single-story roof is insufficient for modern showers. Technicians must install a 1-bar or 2-bar automatic inline pressure booster pump right after the overhead tank's main outlet gate valve.
+- Problem: Sump tank contamination during Monsoon season.
+- Solution: Seal masonry tank lids with rubber gaskets and elevate the physical rim at least 6 inches above the compound ground level to prevent rainwater runoff infiltration.

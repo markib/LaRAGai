@@ -230,7 +230,8 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             );
         }
 
-        $response = $this->searchPoints($vector, $limit, $this->vectorName);
+        $scoreThreshold = config('rag.retrieval.min_score', 0.0);
+        $response = $this->searchPoints($vector, $limit, $this->vectorName, $scoreThreshold);
 
         if (! $response->successful()) {
             throw new \RuntimeException('Qdrant search failed: ' . $response->body());
@@ -240,20 +241,28 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
         return array_map(fn ($hit) => [
             'document_id' => isset($hit['payload']['document_id']) ? (int) $hit['payload']['document_id'] : (int) $hit['id'],
+            'chunk_id' => isset($hit['payload']['chunk_id']) ? (int) $hit['payload']['chunk_id'] : null,
+            'chunk_index' => $hit['payload']['chunk_index'] ?? null,
+            'source' => $hit['payload']['source'] ?? null,
             'score' => isset($hit['score']) ? (float) $hit['score'] : 0.0,
+            'payload' => $hit['payload'] ?? [],
         ], $hits);
     }
 
-    protected function searchPoints(array $vector, int $limit, string $vectorName)
+    protected function searchPoints(array $vector, int $limit, string $vectorName, float $scoreThreshold = 0.0)
     {
        $payload = [
         'vector' => [
-            'name' => $vectorName,   // 🔥 FIX
+            'name' => $vectorName,
             'vector' => $vector,
         ],
         'limit' => $limit,
-        'with_payload' => true,     // usually needed for RAG
+        'with_payload' => true,
     ];
+
+        if ($scoreThreshold > 0.0) {
+            $payload['score_threshold'] = $scoreThreshold;
+        }
 
         return $this->client()
             ->post("{$this->host}/collections/{$this->collection}/points/search", $payload);

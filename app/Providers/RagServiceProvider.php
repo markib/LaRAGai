@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Repositories\ConversationRepository;
 use App\Repositories\DocumentRepository;
 use App\Repositories\QdrantVectorRepository;
+use App\Repositories\ChromaVectorRepository;
 use App\Repositories\VectorRepository;
 use App\Repositories\VectorRepositoryInterface;
 use App\Services\Contracts\EmbeddingProviderInterface;
@@ -28,6 +29,10 @@ class RagServiceProvider extends ServiceProvider
         $this->app->singleton(VectorRepositoryInterface::class, function () {
             if (config('rag.vector_store') === 'qdrant') {
                 return new QdrantVectorRepository();
+            }
+
+            if (config('rag.vector_store') === 'chroma') {
+                return new ChromaVectorRepository();
             }
 
             return new VectorRepository();

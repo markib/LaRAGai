@@ -1,0 +1,14 @@
+DOCUMENT_ID: NP-PLUMB-003
+TITLE: Winterization Protocols for High-Altitude and Valley Plumbing
+CATEGORY: Climate Adaptation
+
+Geographic Scope: 
+High-altitude areas (e.g., Solukhumbu, Mustang, Rasuwa) and cold valley winter snaps (Kathmandu, Pokhara overnight lows).
+
+Vulnerability Analysis:
+Exterior uninsulated pipes, particularly PPR (Polypropylene Random Copolymer) and GI (Galvanized Iron) water lines exposed on northern-facing walls or rooftops, are prone to freezing. When water transforms to ice, it expands by approximately 9%, cracking joint fittings and fracturing pipe bodies.
+
+Winterization Procedures:
+1. Thermal Insulation Wrapping: All exposed vertical rising mains and rooftop distribution manifolds must be wrapped in closed-cell polyethylene foam insulation tubes (at least 15mm thickness). Secure the foam with weatherproof UV-resistant PVC wrapping tape.
+2. The "Drip" Method: During extreme sub-zero weather alerts in mountain regions, instruct property caretakers to open the furthest terminal faucet to a micro-drip. Moving water prevents static ice crystal crystallization inside the lines.
+3. Burst Pipe Remediation: If a pipe bursts, immediately close the main gate valve located at the overhead tank outlet. For PPR pipes, cut out the ruptured segment completely using a pipe cutter, clean the damp edges thoroughly, and use a fusion welding socket machine at 260°C to fuse a new couplings sleeve piece. Do not attempt to use solvent cement or glue on PPR.

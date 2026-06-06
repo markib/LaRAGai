@@ -69,6 +69,9 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Run frontend tests
+        run: npm test
+
       # ✅ Updated Trivy version
       - name: Filesystem vulnerability scan
         uses: aquasecurity/trivy-action@v0.14.0

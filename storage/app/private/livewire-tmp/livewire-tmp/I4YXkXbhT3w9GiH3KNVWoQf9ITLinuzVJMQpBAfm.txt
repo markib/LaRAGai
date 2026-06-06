@@ -1,0 +1,19 @@
+DOCUMENT_ID: NP-PLUMB-004
+TITLE: Groundwater Iron and Hardness Mitigation Systems
+CATEGORY: Water Quality & Filtration
+
+Context:
+Deep tube wells (Boring ko Paani) are heavily utilized throughout Nepal to supplement municipal shortages. However, this groundwater regularly contains toxic concentrations of dissolved Iron (Fe), heavy scaling minerals (Calcium/Magnesium hardness), and structural silt.
+
+Plumbing Damage Identification:
+- Reddish-brown scaling stains inside toilet bowls and porcelain sinks indicate iron oxidation.
+- White crusty buildup on showerheads and faucet aerators indicates high calcium carbonate content, causing localized drop in terminal water pressure.
+
+Multi-Stage Treatment System Setup:
+For a standard household, the filtration plant must be installed *after* the transfer pump but *before* the water enters the overhead distribution tank:
+1. Stage 1: Iron Removal Filter (IRF). A vessel filled with manganese greensand or catalytic media to oxidize and filter out dissolved iron molecules.
+2. Stage 2: Activated Carbon Filter. Removes foul subterranean smells, organic elements, and chlorine residues.
+3. Stage 3: Water Softener. An ion-exchange resin tank that trades calcium/magnesium ions for sodium ions, completely eliminating internal pipe scaling.
+
+Maintenance Protocol:
+The system requires a manual backwash sequence every 7 to 14 days depending on consumption volume. Switch the multi-port valve to 'Backwash' for 10 minutes to flush accumulated silt out through the waste drain line, followed by a 'Rinse' cycle for 3 minutes before returning the node to 'Filter' mode.

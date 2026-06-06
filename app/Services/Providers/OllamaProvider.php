@@ -16,8 +16,8 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
 
     public function __construct()
     {
-        $this->model = config('ollama.model', config('ollama-laravel.model', 'phi4-mini:latest'));
-        $this->embeddingModel = config('ollama.embedding_model', config('ollama-laravel.embedding_model', 'nomic-embed-text'));
+        $this->model = config('ollama.model', config('ollama-laravel.model', 'gemma2:2b'));
+        $this->embeddingModel = config('ollama.embedding_model', config('ollama-laravel.embedding_model', 'nomic-embed-text:latest'));
         $this->embeddingModelCandidates = array_values(array_unique(array_filter([
             $this->embeddingModel,
             $this->embeddingModel . ':latest',
