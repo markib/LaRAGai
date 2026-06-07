@@ -9,8 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (env('RAG_VECTOR_STORE', 'mysql') === 'qdrant') {
-            // Qdrant stores vectors externally, so local vector_records are not needed.
+        $vectorStore = env('RAG_VECTOR_STORE', 'mysql');
+        if ($vectorStore === 'qdrant' || $vectorStore === 'chroma') {
+            // Qdrant and Chroma store vectors externally, so local vector_records are not needed.
             return;
         }
 

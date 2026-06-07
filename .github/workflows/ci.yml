@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        php: [8.2]   # Laravel 10/11 → 8.2 recommended
+        php: [8.4]   # Laravel 12 → 8.3 recommended
         node: [20]
 
     steps:
@@ -45,6 +45,13 @@ jobs:
       - name: Copy .env
         run: cp .env.example .env
 
+      - name: Create Laravel required directories
+        run: |
+          mkdir -p storage/framework/views
+          mkdir -p storage/framework/cache
+          mkdir -p storage/framework/sessions
+          mkdir -p bootstrap/cache
+          
       - name: Generate app key
         run: php artisan key:generate
 
@@ -68,6 +75,9 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Run frontend tests
+        run: npm test
 
       # ✅ Updated Trivy version
       - name: Filesystem vulnerability scan

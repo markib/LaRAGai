@@ -1,0 +1,16 @@
+Meeting Notes
+
+Date: 2026-04-13
+
+Attendees:
+- Alex
+- Priya
+- Jordan
+
+Summary:
+We discussed the next release of the LaRAGai product, focusing on improving local search, Qdrant integration, and the ingestion pipeline.
+
+Action Items:
+- Confirm Qdrant embedding model and vector dimension alignment.
+- Add support for text and file ingestion into the queue worker.
+- Validate search results with sample documents.

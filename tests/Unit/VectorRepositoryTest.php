@@ -5,7 +5,19 @@ use App\Models\VectorRecord;
 use App\Repositories\VectorRepository;
 
 it('uses cosine similarity for local pgvector-like distance comparisons', function () {
-    $document = Document::factory()->create();
+    
+    $content = str_repeat('Local RAG document chunk testing. ', 50);
+    $document = Document::create([
+        'filename' => 'sample.pdf',
+        'original_filename' => 'sample.pdf',
+        'disk' => 'local',
+        'path' => 'documents/sample.pdf',
+        'mime_type' => 'application/pdf',
+        'size' => strlen($content),
+        'status' => 'uploaded',
+        'source' => 'sample.pdf',
+    ]);
+
     $vector = generateRandomVector(768);
 
     VectorRecord::create([

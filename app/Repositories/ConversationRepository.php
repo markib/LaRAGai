@@ -3,8 +3,9 @@
 namespace App\Repositories;
 
 use App\Models\Conversation;
+use App\Repositories\Contracts\ConversationRepositoryInterface;
 
-class ConversationRepository
+class ConversationRepository implements ConversationRepositoryInterface
 {
     public function getMessages(string $sessionId): array
     {
@@ -23,5 +24,9 @@ class ConversationRepository
         ]);
 
         $conversation->save();
+    }
+    public function deleteConversation(string $sessionId): void
+    {
+        Conversation::where('session_id', $sessionId)->delete();
     }
 }
