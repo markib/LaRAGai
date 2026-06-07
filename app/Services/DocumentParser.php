@@ -45,19 +45,24 @@ class DocumentParser
 
     protected function parseDocx(string $path): string
     {
-        $phpWord = \PhpOffice\PhpWord\IOFactory::load($path);
+        $zip = new \ZipArchive();
 
-        $content = '';
-
-        foreach ($phpWord->getSections() as $section) {
-            foreach ($section->getElements() as $element) {
-                if (method_exists($element, 'getText')) {
-                    $content .= $element->getText() . PHP_EOL;
-                }
-            }
+        if ($zip->open($path) !== true) {
+            throw new \RuntimeException("Unable to open DOCX file: {$path}");
         }
 
-        return $content;
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        if (! $xml) {
+            throw new \RuntimeException("Invalid DOCX structure: missing document.xml");
+        }
+
+        // Remove XML tags and decode entities
+        $text = strip_tags($xml);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+
+        return trim($text);
     }
 
     protected function parseText(string $path): string
