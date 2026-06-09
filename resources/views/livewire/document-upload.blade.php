@@ -55,6 +55,7 @@
 
                 <div class="document-info">
                     <p class="document-name">{{ $doc['filename'] }}</p>
+                    <p class="document-name">{{ $doc['original_filename'] }}</p>
                     <p class="document-date">{{ $doc['created_at'] }}</p>
                 </div>
             </div>

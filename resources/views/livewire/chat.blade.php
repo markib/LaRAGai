@@ -68,9 +68,15 @@
         <h3 class="documents-title">Retrieved Documents ({{ count($retrievedDocuments) }})</h3>
         <div class="documents-list">
             @foreach ($retrievedDocuments as $doc)
+            
             <div class="document-item">
                 <div class="document-header">
-                    <span class="document-source">{{ $doc['source'] ?? 'Unknown' }}</span>
+                    <span class="document-source">
+                        {{ $doc['original_filename']
+        ?? $doc['filename']
+        ?? $doc['metadata']['filename']
+        ?? 'Unknown' }}
+                    </span>
                     <span class="document-score">Score: {{ round($doc['score'], 3) }}</span>
                 </div>
                 <p class="document-preview">

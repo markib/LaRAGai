@@ -30,18 +30,12 @@ class RagServiceProvider extends ServiceProvider
             if (config('rag.vector_store') === 'qdrant') {
                 return new QdrantVectorRepository();
             }
-
-            if (config('rag.vector_store') === 'chroma') {
-                return new ChromaVectorRepository();
-            }
-
-            return new VectorRepository();
         });
 
         $this->app->singleton(RetrievalProviderInterface::class, function ($app) {
             return new LocalRetrievalProvider(
                 $app->make(EmbeddingProviderInterface::class),
-                $app->make(VectorRepositoryInterface::class),
+                $app->make(QdrantVectorRepository::class),
                 $app->make(DocumentRepository::class)
             );
         });

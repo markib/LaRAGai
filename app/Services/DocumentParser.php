@@ -54,13 +54,16 @@ class DocumentParser
         $xml = $zip->getFromName('word/document.xml');
         $zip->close();
 
-        if (! $xml) {
-            throw new \RuntimeException("Invalid DOCX structure: missing document.xml");
+        if (!$xml) {
+            throw new \RuntimeException("Invalid DOCX: missing document.xml");
         }
 
-        // Remove XML tags and decode entities
-        $text = strip_tags($xml);
+        // Better XML cleanup (less noisy than strip_tags)
+        $text = preg_replace('/<[^>]+>/', ' ', $xml);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+
+        // Normalize whitespace
+        $text = preg_replace('/\s+/', ' ', $text);
 
         return trim($text);
     }

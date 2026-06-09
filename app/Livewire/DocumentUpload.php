@@ -39,6 +39,7 @@ class DocumentUpload extends Component
             ->map(fn ($doc) => [
                 'id' => $doc->id,
                 'filename' => $doc->filename,
+                'original_filename' => $doc->original_filename,
                 'created_at' => optional($doc->created_at)->format('M d, Y H:i'),
             ])
             ->toArray();

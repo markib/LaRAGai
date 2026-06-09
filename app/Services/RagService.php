@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Document;
 use App\Models\DocumentChunk;
-use App\Repositories\ConversationRepository;
-use App\Repositories\DocumentRepository;
+use App\Models\DocumentEmbedding;
+use App\Repositories\QdrantVectorRepository;
 use App\Repositories\VectorRepositoryInterface;
 use App\Services\Contracts\EmbeddingProviderInterface;
 use App\Services\Contracts\GenerationProviderInterface;
@@ -17,77 +18,123 @@ class RagService
         protected EmbeddingProviderInterface $embedder,
         protected RetrievalProviderInterface $retriever,
         protected GenerationProviderInterface $generator,
-        protected DocumentRepository $documents,
-        protected VectorRepositoryInterface $vectors,
-        protected ConversationRepository $conversations
+        protected QdrantVectorRepository $vectors,
     ) {}
 
-    /**
-     * =========================
-     * INGESTION PIPELINE
-     * =========================
-     */
-    public function ingestDocument(
-        string $source,
-        string $content,
-        array $metadata = []
-    ): array {
-        $document = $this->documents->createOrUpdate($source, $content, $metadata);
+    /*
+    |--------------------------------------------------------------------------
+    | INGESTION PIPELINE
+    |--------------------------------------------------------------------------
+    */
 
-        $chunks = $this->chunkContent($content);
+    public function ingestDocument(int $documentId, string $content): array
+    {
+        logger()->info('RAG INGEST START', [
+            'document_id' => $documentId,
+            'content_length' => strlen($content),
+        ]);
 
-        foreach ($chunks as $index => $chunkText) {
-            $embedding = $this->embedder->embed($chunkText);
+        $document = Document::findOrFail($documentId);
 
-            $chunk = DocumentChunk::create([
-                'document_id' => $document['id'],
-                'content' => $chunkText,
-                'metadata' => array_merge($metadata, [
-                    'chunk_index' => $index,
-                    'source' => $source,
-                ]),
-                'embedding' => $embedding,
+        // Prevent duplicate ingestion in concurrent jobs
+        // if ($document->status === 'processing') {
+        //     return [
+        //         'document_id' => $document->id,
+        //         'skipped' => true,
+        //         'reason' => 'already_processing',
+        //     ];
+        // }
+
+        // $document->markAsProcessing();
+
+        try {
+            $chunks = $this->chunkContent($content);
+            logger()->info('RAG CHUNKS GENERATED', [
+                'count' => count($chunks),
             ]);
+            foreach ($chunks as $index => $chunkText) {
 
-            $this->vectors->saveEmbedding(
-                $document['id'],
-                $embedding,
-                [
-                    'source' => $source,
-                    'document_id' => $document['id'],
-                    'chunk_id' => $chunk->id,
+                logger()->info('CREATING CHUNK', [
+                    'index' => $index,
+                ]);
+                // 1. Create chunk
+                $chunk = DocumentChunk::create([
+                    'document_id' => $document->id,
                     'chunk_index' => $index,
-                ]
-            );
-        }
+                    'content' => $chunkText,
+                    'token_count' => Str::length($chunkText),
+                ]);
 
-        return $document;
+                logger()->info('CHUNK CREATED', [
+                    'id' => $chunk->id,
+                ]);
+
+                // 2. Generate embedding
+                $embedding = $this->embedder->embed($chunkText);
+                logger()->info('EMBEDDING GENERATED');
+                logger()->info('Embedding Model', [
+                    'model' => config('ollama-laravel.embedding_model'),
+                ]);
+                // 3. Store embedding (DB optional)
+                DocumentEmbedding::create([
+                    'document_id' => $document->id,
+                    'chunk_id' => $chunk->id,
+                    'embedding' => $embedding,
+                    'model' => config('ollama-laravel.embedding_model', 'nomic-embed-text:latest'),
+                ]);
+
+                // 4. Push to vector DB
+                $this->vectors->saveEmbedding(
+                    $document->id,
+                    $embedding,
+                    [
+                        'document_id' => $document->id,
+                        'chunk_id' => $chunk->id,
+                        'chunk_index' => $index,
+                        'content' => Str::limit($chunkText, 200),
+                    ]
+                );
+                logger()->info('EMBEDDING SAVED');
+            }
+            
+
+            // $document->markAsIndexed();
+
+            return [
+                'document_id' => $document->id,
+                'chunks' => count($chunks),
+                'status' => 'indexed',
+            ];
+        } catch (\Throwable $e) {
+
+            // $document->markAsFailed($e->getMessage());
+
+            throw $e;
+        }
     }
 
-    /**
-     * =========================
-     * RETRIEVAL
-     * =========================
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | RETRIEVAL
+    |--------------------------------------------------------------------------
+    */
+
     public function retrieve(string $query, int $limit = 5): array
     {
         return $this->retriever->search($query, $limit);
     }
 
-    /**
-     * =========================
-     * MAIN RAG ANSWER PIPELINE
-     * =========================
-     */
-    public function answer(
-        string $query,
-        ?string $sessionId = null,
-        int $limit = 5
-    ): array {
+    /*
+    |--------------------------------------------------------------------------
+    | RAG ANSWER PIPELINE
+    |--------------------------------------------------------------------------
+    */
 
-        $documents = $this->retrieve($query, $limit);
+    public function answer(string $query, ?string $sessionId = null, int $limit = 5): array
+    {
+        $results = $this->retrieve($query, $limit);
 
-        if (empty($documents)) {
+        if (empty($results)) {
             return [
                 'answer' => "I couldn't find relevant information in your documents.",
                 'documents' => [],
@@ -95,38 +142,69 @@ class RagService
             ];
         }
 
-        if (config('rag.retrieval.re_rank', true)) {
-            $documents = $this->reRankDocuments($query, $documents);
-        }
+        $context = $this->buildContext($results);
 
-        $prompt = $this->composePrompt($query, $documents, $sessionId);
+        $prompt = $this->buildPrompt($query, $context, $sessionId);
 
         $answer = $this->generator->generate($prompt, [
             'query' => $query,
-            'documents' => $documents,
+            'context' => $context,
         ]);
 
         return [
             'answer' => $answer,
-            'documents' => $documents,
+            'documents' => $results,
             'session_id' => $sessionId,
         ];
     }
 
-    /**
-     * =========================
-     * CHUNKING (PRODUCTION SAFE)
-     * =========================
-     */
-    protected function chunkContent(
-        string $content,
-        int $chunkSize = 900,
-        int $overlap = 150
-    ): array {
+    /*
+    |--------------------------------------------------------------------------
+    | PROMPT BUILDER
+    |--------------------------------------------------------------------------
+    */
+
+    protected function buildPrompt(string $query, string $context, ?string $sessionId): string
+    {
+        $system = "You are a helpful AI assistant. Use ONLY provided context.";
+
+        return <<<PROMPT
+{$system}
+
+Context:
+{$context}
+
+User Question:
+{$query}
+
+Rules:
+- Use only provided context
+- If unsure, say you don't know
+- Be concise
+PROMPT;
+    }
+
+    protected function buildContext(array $documents): string
+    {
+        return collect($documents)
+            ->map(function ($doc, $i) {
+                return "[{$i}] {$doc['content']}";
+            })
+            ->join("\n\n");
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CHUNKING (CLEAN + STABLE)
+    |--------------------------------------------------------------------------
+    */
+
+    protected function chunkContent(string $content, int $size = 900, int $overlap = 150): array
+    {
 
         $content = preg_replace('/\s+/', ' ', trim($content));
 
-        if ($content === '') {
+        if (!$content) {
             return [];
         }
 
@@ -135,137 +213,16 @@ class RagService
         $length = mb_strlen($content);
 
         while ($start < $length) {
-            $chunks[] = mb_substr($content, $start, $chunkSize);
-            $start += ($chunkSize - $overlap);
-        }
+            $chunks[] = mb_substr($content, $start, $size);
+            $start += ($size - $overlap);
 
-        return array_values(array_filter($chunks));
-    }
-
-    /**
-     * =========================
-     * PROMPT BUILDER
-     * =========================
-     */
-    protected function composePrompt(
-        string $query,
-        array $documents,
-        ?string $sessionId = null
-    ): string {
-
-        $system = config('rag.prompt.system', 'You are a helpful assistant.');
-
-        $context = collect($documents)
-            ->map(function ($doc, $i) {
-                return sprintf(
-                    "[%d] Source: %s\n%s",
-                    $i + 1,
-                    $doc['source'] ?? 'unknown',
-                    $doc['content'] ?? ''
-                );
-            })
-            ->join("\n\n");
-
-        $history = '';
-
-        if ($sessionId) {
-            $messages = $this->conversations->getMessages($sessionId);
-
-            if (!empty($messages)) {
-                $history = collect($messages)
-                    ->take(10) // prevent token explosion
-                    ->map(fn($m) => ucfirst($m['role']) . ': ' . $m['message'])
-                    ->join("\n");
-            }
-        }
-
-        return trim("
-{$system}
-
-Context:
-{$context}
-
-Conversation History:
-{$history}
-
-User Question:
-{$query}
-
-Instructions:
-- Use ONLY the provided context
-- If unsure, say you don't know
-- Be concise and accurate
-");
-    }
-
-    /**
-     * =========================
-     * RERANKING
-     * =========================
-     */
-    protected function reRankDocuments(string $query, array $documents): array
-    {
-        if (count($documents) <= 1) {
-            return $documents;
-        }
-
-        $prompt = $this->composeReRankPrompt($query, $documents);
-
-        try {
-            $response = $this->generator->generate($prompt, [
-                'query' => $query,
-                'documents' => $documents,
+            logger()->info('INSERTING CHUNK', [
+                'index' => $start,
             ]);
-
-            $order = $this->parseReRankResponse($response, count($documents));
-
-            if (!empty($order)) {
-                return array_map(fn($i) => $documents[$i], $order);
-            }
-        } catch (\Throwable $e) {
-            // fallback silently
         }
-
-        return $documents;
-    }
-
-    protected function composeReRankPrompt(string $query, array $documents): string
-    {
-        $chunks = collect($documents)
-            ->map(
-                fn($d, $i) =>
-                $i . ") " . Str::limit($d['content'] ?? '', 800)
-            )
-            ->join("\n\n");
-
-        return "
-Rank these documents by relevance to the query.
-
-Query:
-{$query}
-
-Documents:
-{$chunks}
-
-Return ONLY JSON array like:
-[0,1,2]
-";
-    }
-
-    protected function parseReRankResponse(string $response, int $count): array
-    {
-        $decoded = json_decode($response, true);
-
-        if (is_array($decoded)) {
-            return array_values(array_filter($decoded, fn($i) => $i < $count));
-        }
-
-        preg_match_all('/\d+/', $response, $matches);
-
-        $order = array_map('intval', $matches[0] ?? []);
-
-        return array_values(array_unique(
-            array_filter($order, fn($i) => $i < $count)
-        ));
+        logger()->info('RAG CHUNKS GENERATED', [
+            'count' => count($chunks ?? []),
+        ]);
+        return $chunks;
     }
 }

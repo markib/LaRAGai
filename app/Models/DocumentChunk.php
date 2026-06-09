@@ -11,13 +11,31 @@ class DocumentChunk extends Model
 
     protected $fillable = [
         'document_id',
+        'chunk_index',
         'content',
-        'metadata',
-        'embedding',
+        'token_count',
     ];
 
-    protected $casts = [
-        'metadata' => 'array',
-        'embedding' => 'array',
-    ];
+
+
+    public function document()
+    {
+        return $this->belongsTo(Document::class);
+    }
+
+    public function embeddings()
+    {
+        return $this->hasMany(DocumentEmbedding::class);
+    }
+
+    /*
+    |-----------------------------------------
+    | Helpers
+    |-----------------------------------------
+    */
+
+    public function shortContent(int $limit = 120): string
+    {
+        return \Illuminate\Support\Str::limit($this->content, $limit);
+    }
 }

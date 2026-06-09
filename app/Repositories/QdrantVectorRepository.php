@@ -114,13 +114,13 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         return $response;
     }
 
-    public function saveEmbedding(int $documentId, array $vector, array $metadata = []): array
+    public function saveEmbedding(int $documentId, array $embedding, array $payload = []): array
     {
-        if (empty($vector)) {
+        if (empty($embedding)) {
             throw new \RuntimeException('Invalid embedding vector: vector is empty.');
         }
 
-        $vectorLength = count($vector);
+        $vectorLength = count($embedding);
 
         if ($vectorLength !== $this->dimension) {
             $this->handleDimensionMismatch($vectorLength);
@@ -133,11 +133,11 @@ class QdrantVectorRepository implements VectorRepositoryInterface
                 [
                     'id' => $documentId,
                     'vectors' => [
-                        $this->vectorName => $vector,
+                        $this->vectorName => $embedding,
                     ],
                     'payload' => array_merge([
                         'document_id' => $documentId,
-                    ], $metadata),
+                    ], $payload),
                 ],
             ],
         ];
@@ -155,11 +155,11 @@ class QdrantVectorRepository implements VectorRepositoryInterface
                         [
                             'id' => $documentId,
                             'vectors' => [
-                                $this->vectorName => $vector,
+                                $this->vectorName => $embedding ,
                             ],
                             'payload' => array_merge([
                                 'document_id' => $documentId,
-                            ], $metadata),
+                            ], $payload['points'][0]['payload'] ?? []),
                         ],
                     ],
                 ];
@@ -171,10 +171,10 @@ class QdrantVectorRepository implements VectorRepositoryInterface
                         'points' => [
                             [
                                 'id' => $documentId,
-                                'vector' => $vector,
+                                'vector' => $embedding,
                                 'payload' => array_merge([
                                     'document_id' => $documentId,
-                                ], $metadata),
+                                ], $payload['points'][0]['payload'] ?? []),
                             ],
                         ],
                     ];
@@ -191,11 +191,11 @@ class QdrantVectorRepository implements VectorRepositoryInterface
                 $alternatePayload = [
                     'ids' => [$documentId],
                     'vectors' => $this->vectorName !== 'vector'
-                        ? [$this->vectorName => [$vector]]
-                        : [$vector],
+                        ? [$this->vectorName => [$embedding]]
+                        : [$embedding],
                     'payloads' => [array_merge([
                         'document_id' => $documentId,
-                    ], $metadata)],
+                    ], $payload['points'][0]['payload'] ?? [])],
                 ];
 
                 $response = $this->upsertPoints($alternatePayload);
@@ -212,26 +212,26 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
         return [
             'document_id' => $documentId,
-            'metadata' => $metadata,
+            'metadata' => $payload['points'][0]['payload'] ?? [],
         ];
     }
 
-    public function search(array $vector, int $limit = 5): array
+    public function search(array $embedding, int $limit = 5): array
     {
         $this->ensureCollectionExists();
 
-        if (empty($vector) || count($vector) !== $this->dimension) {
+        if (empty($embedding) || count($embedding) !== $this->dimension) {
             throw new \RuntimeException(
                 sprintf(
                     'Invalid embedding vector. Expected %d dimensions, got: %d',
                     $this->dimension,
-                    count($vector)
+                    count($embedding)
                 )
             );
         }
 
         $scoreThreshold = config('rag.retrieval.min_score', 0.0);
-        $response = $this->searchPoints($vector, $limit, $this->vectorName, $scoreThreshold);
+        $response = $this->searchPoints($embedding, $limit, $this->vectorName, $scoreThreshold);
 
         if (! $response->successful()) {
             throw new \RuntimeException('Qdrant search failed: ' . $response->body());

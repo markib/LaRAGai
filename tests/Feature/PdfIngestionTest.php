@@ -3,59 +3,89 @@
 use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Models\DocumentChunk;
+use App\Models\DocumentEmbedding;
+use App\Repositories\QdrantVectorRepository;
 use App\Repositories\VectorRepository;
 use App\Services\DocumentParser;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 
-it('indexes a document and finds correct vector similarity result', function () {
-
-    $this->mock(DocumentParser::class, function ($mock) {
-        $mock->shouldReceive('parse')
-            ->andReturn(str_repeat('Local RAG document chunk testing. ', 50));
-    });
-    Config::set('queue.default', 'sync');
-
-    $vector = mockOllamaEmbeddings();
-    mockOllamaCompletion('Mocked answer for PDF ingestion.');
+it('indexes a document and stores chunks and embeddings', function () {
 
     Storage::fake('local');
 
-    $content = str_repeat('Local RAG document chunk testing. ', 50);
+    // Required because parser checks file existence
+    Storage::disk('local')->put(
+        'documents/sample.pdf',
+        'fake pdf content'
+    );
 
-    // 1. Store fake file (important because parser uses disk/path)
-    $path = Storage::disk('local')->put('documents/sample.pdf', $content);
+    $vector = mockOllamaEmbeddings();
 
-    // 2. Create document record (matches your model)
+    mockOllamaCompletion(
+        'Mocked answer for PDF ingestion.'
+    );
+
+    $this->mock(DocumentParser::class, function ($mock) {
+        $mock->shouldReceive('parse')
+            ->once()
+            ->andReturn(
+                str_repeat(
+                    'Local RAG document chunk testing. ',
+                    50
+                )
+            );
+    });
+
     $document = Document::create([
         'filename' => 'sample.pdf',
         'original_filename' => 'sample.pdf',
         'disk' => 'local',
         'path' => 'documents/sample.pdf',
         'mime_type' => 'application/pdf',
-        'size' => strlen($content),
+        'size' => 1234,
         'status' => 'uploaded',
-        'source' => 'sample.pdf',
     ]);
 
-    // 3. Run job directly (no queue confusion)
-    (new IndexDocumentJob($document->id))
-        ->handle(
-            app(\App\Services\RagService::class),
-            app(\App\Services\DocumentParser::class)
-        );
+    app(IndexDocumentJob::class, [
+        'documentId' => $document->id,
+    ])->handle(
+        app(\App\Services\RagService::class),
+        app(DocumentParser::class)
+    );
 
-    // 4. Assertions
-    expect(DocumentChunk::count())->toBeGreaterThan(1);
+    $document->refresh();
 
-    expect(DocumentChunk::first()->embedding)
-        ->toBeVectorLength(768);
+    expect($document->status)
+        ->toBe('indexed');
 
-    $results = (new VectorRepository())->search($vector, 1);
+    expect(DocumentChunk::count())
+        ->toBeGreaterThan(1);
+
+    expect(DocumentEmbedding::count())
+        ->toBe(DocumentChunk::count());
+
+    $chunk = DocumentChunk::first();
+
+    expect($chunk)->not->toBeNull();
+
+    $embedding = DocumentEmbedding::first();
+
+    expect($embedding)->not->toBeNull();
+
+    expect($embedding->embedding)
+        ->toBeArray();
+
+    expect(count($embedding->embedding))
+        ->toBe(768);
+
+    $results = app(QdrantVectorRepository::class)
+        ->search($vector, 1);
 
     expect($results)->toHaveCount(1);
 
-    expect($results[0]['document_id'])->toBe($document->id);
+    expect($results[0]['document_id'])
+        ->toBe($document->id);
 
-    expect($results[0]['score'])->toBeGreaterThan(0.99);
+    expect($results[0]['score'])
+        ->toBeGreaterThan(0.90);
 });

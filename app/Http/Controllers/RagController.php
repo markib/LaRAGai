@@ -2,53 +2,76 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Jobs\IndexDocumentJob;
+use App\Models\Document;
 use App\Services\RagService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 
 class RagController extends Controller
 {
+    /**
+     * INGEST DOCUMENT (CLEAN VERSION)
+     */
     public function ingest(Request $request)
     {
         $payload = $request->validate([
-            'source' => 'nullable|string',
             'content' => 'nullable|string|required_without:document',
-            'document' => 'nullable|file',
-            'metadata' => 'nullable',
+            'document' => 'nullable|file|max:20480',
         ]);
 
-        $metadata = $payload['metadata'] ?? [];
-        if (is_string($metadata)) {
-            $decoded = json_decode($metadata, true);
-            $metadata = is_array($decoded) ? $decoded : [];
-        }
-
+        $file = $request->file('document');
         $content = $payload['content'] ?? null;
-        $document = $request->file('document');
 
-        if ($document) {
-            $content = File::get($document->getRealPath());
-            if (empty($payload['source'])) {
-                $payload['source'] = $document->getClientOriginalName();
-            }
+        /**
+         * STEP 1: Handle file upload
+         */
+        if ($file) {
+
+            $originalName = $file->getClientOriginalName();
+
+            $safeName = Str::uuid() . '_' . $originalName;
+
+            $path = $file->storeAs('documents', $safeName, 'local');
+
+            $content = null; // parser will handle later
         }
 
-        if (empty($content)) {
+        if (!$file && empty($content)) {
             return response()->json([
-                'message' => 'Please provide document content or upload a file.',
+                'message' => 'Please provide a file or content.',
             ], 422);
         }
 
-        $source = $payload['source'] ?? 'manual-upload';
+        /**
+         * STEP 2: Create Document record FIRST
+         */
+        $document = Document::create([
+            'filename' => $file ? $safeName : 'manual_' . Str::uuid(),
+            'original_filename' => $file ? $file->getClientOriginalName() : null,
+            'disk' => 'local',
+            'path' => $file ? $path : null,
+            'mime_type' => $file?->getMimeType(),
+            'size' => $file?->getSize() ?? 0,
+            'status' => 'uploaded',
+        ]);
 
-        IndexDocumentJob::dispatch($source, $content, $metadata);
+        /**
+         * STEP 3: Dispatch job (ONLY document_id)
+         */
+        IndexDocumentJob::dispatch($document->id);
 
-        return response()->json(["status" => "queued", "source" => $source]);
+        return response()->json([
+            'status' => 'queued',
+            'document_id' => $document->id,
+        ]);
     }
 
+    /**
+     * QUERY RAG (UNCHANGED - GOOD)
+     */
     public function query(Request $request, RagService $ragService)
     {
         $payload = Validator::make($request->all(), [
@@ -57,12 +80,12 @@ class RagController extends Controller
             'top_k' => 'nullable|integer|min:1|max:20',
         ])->validated();
 
-        $result = $ragService->answer(
-            $payload['query'],
-            $payload['session_id'] ?? null,
-            $payload['top_k'] ?? null
+        return response()->json(
+            $ragService->answer(
+                $payload['query'],
+                $payload['session_id'] ?? null,
+                $payload['top_k'] ?? 5
+            )
         );
-
-        return response()->json($result);
     }
 }

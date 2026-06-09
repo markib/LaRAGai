@@ -36,7 +36,8 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
         $chunkIds = array_unique(array_values(array_filter(array_column($matches, 'chunk_id'))));
 
         if (! empty($chunkIds)) {
-            $chunks = DocumentChunk::whereIn('id', $chunkIds)
+            $chunks = DocumentChunk::with('document')
+                ->whereIn('id', $chunkIds)
                 ->get()
                 ->keyBy('id');
 
@@ -56,6 +57,8 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
                     'chunk_index' => $match['chunk_index'] ?? $chunk->metadata['chunk_index'] ?? null,
                     'source' => $match['source'] ?? $chunk->metadata['source'] ?? null,
                     'content' => $chunk->content,
+                    'filename' => $chunk->document?->filename,
+                    'original_filename' => $chunk->document?->original_filename,
                     'score' => (float) ($match['score'] ?? 0.0),
                     'metadata' => $chunk->metadata,
                 ];

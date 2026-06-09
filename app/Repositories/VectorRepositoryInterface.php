@@ -4,13 +4,20 @@ namespace App\Repositories;
 
 interface VectorRepositoryInterface
 {
-    public function saveEmbedding(int $documentId, array $vector, array $metadata = []): array;
+    public function saveEmbedding(
+        int $documentId,
+        array $embedding,
+        array $payload = []
+    ): array;
 
-    public function search(array $vector, int $limit = 5): array;
+    public function search(
+        array $embedding,
+        int $limit = 5
+    ): array;
 
-    public function getPoint(int $documentId): ?array;
-
-    public function deletePoint(int $documentId): bool;
+    public function deletePoint(
+        int $pointId
+    ): bool;
 
     public function clearCollection(): bool;
 }
