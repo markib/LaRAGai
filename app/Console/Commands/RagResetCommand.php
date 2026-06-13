@@ -32,7 +32,8 @@ class RagResetCommand extends Command
 
             $this->info('Database cleared.');
         } catch (\Throwable $e) {
-            $this->error('RAG reset failed: ' . $e->getMessage());
+            $this->error('RAG reset failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
 

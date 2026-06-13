@@ -89,7 +89,7 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
 
         uasort(
             $scores,
-            fn($a, $b) => $b['score'] <=> $a['score']
+            fn ($a, $b) => $b['score'] <=> $a['score']
         );
 
         return array_slice(

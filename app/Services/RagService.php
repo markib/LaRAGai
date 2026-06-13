@@ -71,7 +71,7 @@ class RagService
                 // 2. Generate embedding
                 $embedding = $this->embedder->embed($chunkText);
                 logger()->info('EMBEDDING GENERATED');
-             
+
                 // 3. Store embedding (DB optional)
                 DocumentEmbedding::create([
                     'document_id' => $document->id,
@@ -199,7 +199,9 @@ PROMPT;
 
         $content = preg_replace('/\s+/', ' ', trim($content));
 
-        if (! $content) return [];
+        if (! $content) {
+            return [];
+        }
 
         $sentences = preg_split('/(?<=[.!?])\s+/', $content);
 
@@ -208,11 +210,11 @@ PROMPT;
 
         foreach ($sentences as $sentence) {
 
-            if (strlen($chunk . ' ' . $sentence) > $size) {
+            if (strlen($chunk.' '.$sentence) > $size) {
                 $chunks[] = trim($chunk);
-                $chunk = substr($chunk, -$overlap) . ' ' . $sentence;
+                $chunk = substr($chunk, -$overlap).' '.$sentence;
             } else {
-                $chunk .= ' ' . $sentence;
+                $chunk .= ' '.$sentence;
             }
         }
 

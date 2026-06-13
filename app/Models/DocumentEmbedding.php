@@ -15,7 +15,6 @@ class DocumentEmbedding extends Model
         'model',
     ];
 
-
     /*
     |-----------------------------------------
     | Relationships
