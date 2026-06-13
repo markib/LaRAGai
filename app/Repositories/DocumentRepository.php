@@ -26,8 +26,8 @@ class DocumentRepository
             ->keyBy('id');
 
         return collect($ids)
-            ->filter(fn($id) => $documents->has($id))
-            ->map(fn($id) => $documents->get($id)->only([
+            ->filter(fn ($id) => $documents->has($id))
+            ->map(fn ($id) => $documents->get($id)->only([
                 'id',
                 'filename',
                 'original_filename',

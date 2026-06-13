@@ -5,8 +5,8 @@ use App\Models\Document;
 use App\Models\DocumentChunk;
 use App\Models\DocumentEmbedding;
 use App\Repositories\QdrantVectorRepository;
-use App\Repositories\VectorRepository;
 use App\Services\DocumentParser;
+use App\Services\RagService;
 use Illuminate\Support\Facades\Storage;
 
 it('indexes a document and stores chunks and embeddings', function () {
@@ -49,7 +49,7 @@ it('indexes a document and stores chunks and embeddings', function () {
     app(IndexDocumentJob::class, [
         'documentId' => $document->id,
     ])->handle(
-        app(\App\Services\RagService::class),
+        app(RagService::class),
         app(DocumentParser::class)
     );
 
@@ -72,11 +72,14 @@ it('indexes a document and stores chunks and embeddings', function () {
 
     expect($embedding)->not->toBeNull();
 
-    expect($embedding->embedding)
-        ->toBeArray();
+    expect($embedding->document_id)
+        ->toBe($document->id);
 
-    expect(count($embedding->embedding))
-        ->toBe(768);
+    expect($embedding->chunk_id)
+        ->toBe($chunk->id);
+
+    expect($embedding->model)
+        ->toBeString();
 
     $results = app(QdrantVectorRepository::class)
         ->search($vector, 1);

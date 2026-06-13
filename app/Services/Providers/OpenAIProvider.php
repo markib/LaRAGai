@@ -10,8 +10,11 @@ use RuntimeException;
 class OpenAIProvider implements EmbeddingProviderInterface, GenerationProviderInterface
 {
     protected string $apiKey;
+
     protected string $baseUrl;
+
     protected string $embeddingModel;
+
     protected string $generationModel;
 
     public function __construct()
@@ -36,7 +39,7 @@ class OpenAIProvider implements EmbeddingProviderInterface, GenerationProviderIn
 
         $payload = $response->json();
 
-        if (!isset($payload['data'][0]['embedding'])) {
+        if (! isset($payload['data'][0]['embedding'])) {
             throw new RuntimeException('Failed to create embeddings from OpenAI.');
         }
 

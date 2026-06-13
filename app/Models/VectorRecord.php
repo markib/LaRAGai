@@ -15,7 +15,7 @@ class VectorRecord extends Model
     public function setVectorAttribute($value): void
     {
         if (is_array($value)) {
-            $this->attributes['vector'] = '[' . implode(',', array_map(fn ($item) => is_numeric($item) ? $item : floatval($item), $value)) . ']';
+            $this->attributes['vector'] = '['.implode(',', array_map(fn ($item) => is_numeric($item) ? $item : floatval($item), $value)).']';
 
             return;
         }

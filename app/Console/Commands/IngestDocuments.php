@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 class IngestDocuments extends Command
 {
     protected $signature = 'rag:ingest {path : File or directory path} {--source= : Optional document source identifier}';
+
     protected $description = 'Ingest documents from a file or directory into the RAG index.';
 
     public function handle(): int
@@ -16,8 +17,9 @@ class IngestDocuments extends Command
         $path = $this->argument('path');
         $source = $this->option('source');
 
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             $this->error("Path not found: {$path}");
+
             return 1;
         }
 

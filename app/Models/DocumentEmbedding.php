@@ -12,13 +12,9 @@ class DocumentEmbedding extends Model
     protected $fillable = [
         'document_id',
         'chunk_id',
-        'embedding',
         'model',
     ];
 
-    protected $casts = [
-        'embedding' => 'array',
-    ];
 
     /*
     |-----------------------------------------

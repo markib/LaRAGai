@@ -11,7 +11,9 @@ use RuntimeException;
 class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderInterface
 {
     protected string $model;
+
     protected string $embeddingModel;
+
     protected array $embeddingModelCandidates;
 
     public function __construct()
@@ -20,9 +22,9 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
         $this->embeddingModel = config('ollama.embedding_model', config('ollama-laravel.embedding_model', 'nomic-embed-text:latest'));
         $this->embeddingModelCandidates = array_values(array_unique(array_filter([
             $this->embeddingModel,
-            $this->embeddingModel . ':latest',
+            $this->embeddingModel.':latest',
             str_replace('-', '/', $this->embeddingModel),
-            str_replace('-', '/', $this->embeddingModel) . ':latest',
+            str_replace('-', '/', $this->embeddingModel).':latest',
         ])));
     }
 
@@ -45,13 +47,13 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
         }
 
         throw new RuntimeException(
-            'Ollama failed to create embeddings for any candidate model: ' . implode(' | ', $errors)
+            'Ollama failed to create embeddings for any candidate model: '.implode(' | ', $errors)
         );
     }
 
     protected function requestEmbedding(string $model, string $text): array
     {
-        $url = rtrim(config('ollama-laravel.url', 'http://127.0.0.1:11434'), '/') . '/v1/embeddings';
+        $url = rtrim(config('ollama-laravel.url', 'http://127.0.0.1:11434'), '/').'/v1/embeddings';
         $response = Http::timeout(config('ollama-laravel.connection.timeout', 300))
             ->post($url, [
                 'model' => $model,
@@ -59,13 +61,13 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
             ]);
 
         if (! $response->successful()) {
-            throw new RuntimeException('Ollama request failed for ' . $model . ': ' . $response->body());
+            throw new RuntimeException('Ollama request failed for '.$model.': '.$response->body());
         }
 
         $payload = $response->json();
 
         if (isset($payload['error'])) {
-            throw new RuntimeException('Ollama error for ' . $model . ': ' . $payload['error']);
+            throw new RuntimeException('Ollama error for '.$model.': '.$payload['error']);
         }
 
         $embedding = null;
@@ -95,7 +97,7 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
 
         if (! is_array($embedding) || count($embedding) === 0) {
             throw new RuntimeException(
-                'Ollama returned no embedding for ' . $model . ': ' . json_encode($payload)
+                'Ollama returned no embedding for '.$model.': '.json_encode($payload)
             );
         }
 
@@ -109,7 +111,7 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
             ->ask();
 
         if (isset($result['error'])) {
-            throw new RuntimeException('Ollama generation failed: ' . $result['error']);
+            throw new RuntimeException('Ollama generation failed: '.$result['error']);
         }
 
         $output = $result['output'] ?? null;

@@ -7,78 +7,134 @@ use App\Repositories\DocumentRepository;
 use App\Repositories\VectorRepositoryInterface;
 use App\Services\Contracts\EmbeddingProviderInterface;
 use App\Services\Contracts\RetrievalProviderInterface;
+use App\Services\Retrieval\PostgresBm25Retriever;
 
 class LocalRetrievalProvider implements RetrievalProviderInterface
 {
     public function __construct(
         protected EmbeddingProviderInterface $embedder,
         protected VectorRepositoryInterface $vectors,
-        protected DocumentRepository $documents
-    ) {
-    }
+        protected DocumentRepository $documents,
+        protected PostgresBm25Retriever $bm25Retriever
+    ) {}
 
     public function search(string $query, int $limit = 5): array
     {
         $queryEmbedding = $this->embedder->embed($query);
-        $matches = $this->vectors->search($queryEmbedding, $limit);
+
+        // Vector search
+        $vectorResults = $this->vectors->search(
+            $queryEmbedding,
+            $limit * 4
+        );
+
+        // BM25 search
+        $bm25Results = $this->bm25Retriever->search(
+            $query,
+            $limit * 4
+        );
+
+        // Hybrid merge
+        $matches = $this->reciprocalRankFusion(
+            $vectorResults,
+            $bm25Results,
+            $limit
+        );
 
         if (empty($matches)) {
             return [];
         }
 
-        $minScore = config('rag.retrieval.min_score', 0.0);
-        $matches = array_filter($matches, fn ($match) => isset($match['score']) && (float) $match['score'] >= $minScore);
+        return $this->hydrateChunks($matches);
+    }
 
-        if (empty($matches)) {
-            return [];
-        }
+    protected function reciprocalRankFusion(
+        array $vectorResults,
+        array $bm25Results,
+        int $limit
+    ): array {
+        $scores = [];
 
-        $chunkIds = array_unique(array_values(array_filter(array_column($matches, 'chunk_id'))));
+        foreach ($vectorResults as $rank => $result) {
 
-        if (! empty($chunkIds)) {
-            $chunks = DocumentChunk::with('document')
-                ->whereIn('id', $chunkIds)
-                ->get()
-                ->keyBy('id');
+            $chunkId = $result['chunk_id'] ?? null;
 
-            $results = [];
-
-            foreach ($matches as $match) {
-                if (empty($match['chunk_id']) || ! $chunks->has($match['chunk_id'])) {
-                    continue;
-                }
-
-                $chunk = $chunks->get($match['chunk_id']);
-
-                $results[] = [
-                    'id' => $chunk->id,
-                    'document_id' => $chunk->document_id,
-                    'chunk_id' => $chunk->id,
-                    'chunk_index' => $match['chunk_index'] ?? $chunk->metadata['chunk_index'] ?? null,
-                    'source' => $match['source'] ?? $chunk->metadata['source'] ?? null,
-                    'content' => $chunk->content,
-                    'filename' => $chunk->document?->filename,
-                    'original_filename' => $chunk->document?->original_filename,
-                    'score' => (float) ($match['score'] ?? 0.0),
-                    'metadata' => $chunk->metadata,
-                ];
+            if (! $chunkId) {
+                continue;
             }
 
-            if (! empty($results)) {
-                return $results;
-            }
+            $scores[$chunkId] ??= [
+                'chunk_id' => $chunkId,
+                'document_id' => $result['document_id'] ?? null,
+                'score' => 0,
+            ];
+
+            $scores[$chunkId]['score']
+                += 1 / (60 + $rank + 1);
         }
 
-        $documentIds = array_unique(array_values(array_filter(array_column($matches, 'document_id'))));
-        $documents = $this->documents->findByIds($documentIds);
+        foreach ($bm25Results as $rank => $result) {
 
-        return collect($documents)
-            ->map(function ($document, $index) use ($matches) {
-                $match = $matches[$index] ?? [];
-                $document['score'] = isset($match['score']) ? (float) $match['score'] : 0.0;
+            $chunkId = $result['id'];
 
-                return $document;
-            })
-            ->toArray();
+            $scores[$chunkId] ??= [
+                'chunk_id' => $chunkId,
+                'document_id' => $result['document_id'],
+                'score' => 0,
+            ];
+
+            $scores[$chunkId]['score']
+                += 1 / (60 + $rank + 1);
+        }
+
+        uasort(
+            $scores,
+            fn($a, $b) => $b['score'] <=> $a['score']
+        );
+
+        return array_slice(
+            array_values($scores),
+            0,
+            $limit
+        );
+    }
+
+    protected function hydrateChunks(array $matches): array
+    {
+        $chunkIds = array_column(
+            $matches,
+            'chunk_id'
+        );
+
+        $chunks = DocumentChunk::with('document')
+            ->whereIn('id', $chunkIds)
+            ->get()
+            ->keyBy('id');
+
+        $results = [];
+
+        foreach ($matches as $match) {
+
+            $chunkId = $match['chunk_id'];
+
+            if (! $chunks->has($chunkId)) {
+                continue;
+            }
+
+            $chunk = $chunks[$chunkId];
+
+            $results[] = [
+                'id' => $chunk->id,
+                'document_id' => $chunk->document_id,
+                'chunk_id' => $chunk->id,
+                'chunk_index' => $chunk->chunk_index,
+                'content' => $chunk->content,
+                'filename' => $chunk->document?->filename,
+                'original_filename' => $chunk->document?->original_filename,
+                'score' => $match['score'],
+            ];
+        }
+
+        return $results;
     }
 }

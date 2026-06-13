@@ -55,6 +55,18 @@ jobs:
       - name: Generate app key
         run: php artisan key:generate
 
+       # 1. Syntax check
+      - name: PHP Syntax Check
+        run: find . -path ./vendor -prune -o -type f -name "*.php" -print | xargs -P 4 -n 1 php -l  
+
+      # 2. Code style formatting
+      - name: Check Code Style
+        run: ./vendor/bin/pint --test
+  
+            # 3. Static analysis
+      - name: Static analysis (Larastan)
+        run: ./vendor/bin/phpstan analyse --level=max
+
       # ✅ Use SQLite for CI (fast + no setup)
       - name: Prepare SQLite database
         run: |

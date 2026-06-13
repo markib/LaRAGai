@@ -25,6 +25,7 @@ class ConversationRepository implements ConversationRepositoryInterface
 
         $conversation->save();
     }
+
     public function deleteConversation(string $sessionId): void
     {
         Conversation::where('session_id', $sessionId)->delete();

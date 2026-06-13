@@ -6,9 +6,8 @@ use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Services\RagService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class RagController extends Controller
 {
@@ -32,14 +31,14 @@ class RagController extends Controller
 
             $originalName = $file->getClientOriginalName();
 
-            $safeName = Str::uuid() . '_' . $originalName;
+            $safeName = Str::uuid().'_'.$originalName;
 
             $path = $file->storeAs('documents', $safeName, 'local');
 
             $content = null; // parser will handle later
         }
 
-        if (!$file && empty($content)) {
+        if (! $file && empty($content)) {
             return response()->json([
                 'message' => 'Please provide a file or content.',
             ], 422);
@@ -49,7 +48,7 @@ class RagController extends Controller
          * STEP 2: Create Document record FIRST
          */
         $document = Document::create([
-            'filename' => $file ? $safeName : 'manual_' . Str::uuid(),
+            'filename' => $file ? $safeName : 'manual_'.Str::uuid(),
             'original_filename' => $file ? $file->getClientOriginalName() : null,
             'disk' => 'local',
             'path' => $file ? $path : null,

@@ -18,13 +18,12 @@ class Document extends Model
         'size',
         'status',
         'error_message',
-        'indexed_at',];
+        'indexed_at', ];
 
     protected $casts = [
         'indexed_at' => 'datetime',
     ];
 
-    
     public function chunks()
     {
         return $this->hasMany(DocumentChunk::class);

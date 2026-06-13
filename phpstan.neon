@@ -1,0 +1,12 @@
+parameters:
+    paths:
+        - app
+        - config
+        - database
+        - routes
+
+    level: 6
+
+    tmpDir: storage/phpstan
+
+ 

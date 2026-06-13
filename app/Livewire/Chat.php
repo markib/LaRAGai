@@ -2,25 +2,28 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\Attributes\Computed;
-use Illuminate\Support\Str;
-use App\Services\RagService;
 use App\Repositories\ConversationRepository;
+use App\Services\RagService;
+use Illuminate\Support\Str;
+use Livewire\Attributes\Computed;
+use Livewire\Component;
 
 class Chat extends Component
 {
     public ?string $sessionId = null;
+
     public array $messages = [];
+
     public string $currentQuery = '';
-  
-    
-    
+
     public array $retrievedDocuments = [];
+
     public int $topK = 5;
+
     public string $errorMessage = '';
 
     protected RagService $ragService;
+
     protected ConversationRepository $conversationRepository;
 
     public function mount(): void
@@ -57,13 +60,13 @@ class Chat extends Component
 
         if (trim($this->currentQuery) === '') {
             $this->errorMessage = 'Please enter a query.';
+
             return;
         }
 
         $query = trim($this->currentQuery);
         $this->currentQuery = '';
-        
-       
+
         try {
             // Save user message
             $this->conversationRepository->appendMessage($this->sessionId, 'user', $query);
@@ -125,7 +128,6 @@ class Chat extends Component
         }
     }
 
-    
     public function deleteConversation(string $sessionId): void
     {
         // ... your existing code ...
@@ -134,18 +136,15 @@ class Chat extends Component
     protected function resetChat(): void
     {
         $this->messages = [];
-       
-        
+
         $this->retrievedDocuments = [];
-        
-        
+
     }
 
     protected function handleError(\Throwable $e): void
     {
         $this->errorMessage = 'Something went wrong. Please try again.';
-        
-        
+
         logger()->error($e->getMessage());
     }
 

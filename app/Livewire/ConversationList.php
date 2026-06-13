@@ -3,12 +3,13 @@
 namespace App\Livewire;
 
 use App\Models\Conversation;
-use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Component;
 
 class ConversationList extends Component
 {
     public array $conversations = [];
+
     public ?string $currentSessionId = null;
 
     public function mount(?string $currentSessionId = null)
@@ -49,7 +50,7 @@ class ConversationList extends Component
         try {
             Conversation::where('session_id', $sessionId)->delete();
             $this->loadConversations();
-            
+
             if ($this->currentSessionId === $sessionId) {
                 $this->currentSessionId = null;
                 $this->dispatch('conversationCleared');

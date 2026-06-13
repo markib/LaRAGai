@@ -12,8 +12,8 @@ class DocumentFactory extends Factory
     public function definition(): array
     {
         return [
-            'filename' => fake()->uuid() . '.pdf',
-            'original_filename' => fake()->word() . '.pdf',
+            'filename' => fake()->uuid().'.pdf',
+            'original_filename' => fake()->word().'.pdf',
             'disk' => 'local',
             'path' => 'documents/sample.pdf',
             'mime_type' => 'application/pdf',

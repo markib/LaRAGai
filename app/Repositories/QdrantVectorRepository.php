@@ -10,10 +10,15 @@ class QdrantVectorRepository implements VectorRepositoryInterface
     private const VECTOR_NAME = 'embeddings';
 
     protected string $host;
+
     protected ?string $apiKey;
+
     protected string $collection;
+
     protected int $dimension;
+
     protected string $distance;
+
     protected string $vectorName;
 
     public function __construct()
@@ -80,11 +85,13 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
             if (isset($definition['name'])) {
                 $normalized[$definition['name']] = $definition;
+
                 continue;
             }
 
             if (isset($definition['vector_name'])) {
                 $normalized[$definition['vector_name']] = $definition;
+
                 continue;
             }
         }
@@ -117,7 +124,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
     public function saveEmbedding(int $documentId, array $embedding, array $payload = []): array
     {
         if (empty($embedding)) {
-            throw new \RuntimeException('Invalid embedding vector: vector is empty.');
+            throw new RuntimeException('Invalid embedding vector: vector is empty.');
         }
 
         $vectorLength = count($embedding);
@@ -155,7 +162,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
                         [
                             'id' => $documentId,
                             'vectors' => [
-                                $this->vectorName => $embedding ,
+                                $this->vectorName => $embedding,
                             ],
                             'payload' => array_merge([
                                 'document_id' => $documentId,
@@ -221,7 +228,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         $this->ensureCollectionExists();
 
         if (empty($embedding) || count($embedding) !== $this->dimension) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 sprintf(
                     'Invalid embedding vector. Expected %d dimensions, got: %d',
                     $this->dimension,
@@ -234,7 +241,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         $response = $this->searchPoints($embedding, $limit, $this->vectorName, $scoreThreshold);
 
         if (! $response->successful()) {
-            throw new \RuntimeException('Qdrant search failed: ' . $response->body());
+            throw new RuntimeException('Qdrant search failed: '.$response->body());
         }
 
         $hits = $response->json('result', []);
@@ -251,14 +258,14 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
     protected function searchPoints(array $vector, int $limit, string $vectorName, float $scoreThreshold = 0.0)
     {
-       $payload = [
-        'vector' => [
-            'name' => $vectorName,
-            'vector' => $vector,
-        ],
-        'limit' => $limit,
-        'with_payload' => true,
-    ];
+        $payload = [
+            'vector' => [
+                'name' => $vectorName,
+                'vector' => $vector,
+            ],
+            'limit' => $limit,
+            'with_payload' => true,
+        ];
 
         if ($scoreThreshold > 0.0) {
             $payload['score_threshold'] = $scoreThreshold;
@@ -278,7 +285,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         }
 
         if (! $response->successful()) {
-            throw new RuntimeException('Qdrant fetch failed: ' . $response->body());
+            throw new RuntimeException('Qdrant fetch failed: '.$response->body());
         }
 
         return $response->json();
@@ -292,7 +299,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             ]);
 
         if (! $response->successful()) {
-            throw new RuntimeException('Qdrant delete failed: ' . $response->body());
+            throw new RuntimeException('Qdrant delete failed: '.$response->body());
         }
 
         return true;
@@ -309,7 +316,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             ]);
 
         if (! $response->successful()) {
-            throw new RuntimeException('Qdrant clear failed: ' . $response->body());
+            throw new RuntimeException('Qdrant clear failed: '.$response->body());
         }
 
         return true;
@@ -344,7 +351,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             ]);
 
         if (! $response->successful()) {
-            throw new RuntimeException('Failed to create Qdrant collection: ' . $response->body());
+            throw new RuntimeException('Failed to create Qdrant collection: '.$response->body());
         }
     }
 
@@ -355,6 +362,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
         if ($response->status() !== 200) {
             $this->dimension = $vectorLength;
+
             return;
         }
 
@@ -366,11 +374,13 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
         if ($currentSize === null) {
             $this->dimension = $vectorLength;
+
             return;
         }
 
         if ($currentSize === $vectorLength) {
             $this->dimension = $vectorLength;
+
             return;
         }
 
@@ -379,11 +389,12 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         if ($pointCount === 0) {
             $this->deleteCollection();
             $this->dimension = $vectorLength;
+
             return;
         }
 
         throw new RuntimeException(sprintf(
-            'Qdrant collection "%s" was created with vector dimension %d but the embedding length is %d. ' .
+            'Qdrant collection "%s" was created with vector dimension %d but the embedding length is %d. '.
             'Please recreate the collection with the matching dimension or set QDRANT_VECTOR_DIM=%d.',
             $this->collection,
             $currentSize,
@@ -398,7 +409,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             ->delete("{$this->host}/collections/{$this->collection}");
 
         if (! $response->successful()) {
-            throw new RuntimeException('Failed to delete Qdrant collection: ' . $response->body());
+            throw new RuntimeException('Failed to delete Qdrant collection: '.$response->body());
         }
     }
 
@@ -410,6 +421,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         foreach ($vectors as $name => $definition) {
             if (is_array($definition) && isset($definition['size'])) {
                 $dimensions[$name] = (int) $definition['size'];
+
                 continue;
             }
 
@@ -450,11 +462,13 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
         if (isset($vectors['vector'])) {
             $this->vectorName = 'vector';
+
             return;
         }
 
         if (count($vectors) === 1) {
             $this->vectorName = array_key_first($vectors);
+
             return;
         }
 

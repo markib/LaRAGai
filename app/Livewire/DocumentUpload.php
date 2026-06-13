@@ -2,12 +2,12 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\WithFileUploads;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use App\Models\Document;
 use App\Jobs\IndexDocumentJob;
+use App\Models\Document;
 use Illuminate\Support\Str;
+use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 class DocumentUpload extends Component
 {
@@ -16,7 +16,9 @@ class DocumentUpload extends Component
     public ?TemporaryUploadedFile $file = null;
 
     public bool $isUploading = false;
+
     public string $uploadStatus = '';
+
     public array $uploadedDocuments = [];
 
     protected $listeners = [
@@ -30,7 +32,6 @@ class DocumentUpload extends Component
 
     public function loadDocuments(): void
     {
-      
 
         $this->uploadedDocuments = Document::query()
             ->latest()
@@ -47,7 +48,9 @@ class DocumentUpload extends Component
 
     public function updatedFile(): void
     {
-        if (! $this->file) return;
+        if (! $this->file) {
+            return;
+        }
 
         $this->validate([
             'file' => 'file|max:10240|mimes:txt,pdf,doc,docx,md',
@@ -60,6 +63,7 @@ class DocumentUpload extends Component
     {
         if (! $this->file) {
             $this->uploadStatus = 'Please select a file.';
+
             return;
         }
 
@@ -73,7 +77,7 @@ class DocumentUpload extends Component
 
             $originalName = $this->file->getClientOriginalName();
 
-            $safeName = now()->timestamp . '_' . preg_replace(
+            $safeName = now()->timestamp.'_'.preg_replace(
                 '/[^A-Za-z0-9_\-\.]/',
                 '_',
                 $originalName
@@ -87,20 +91,19 @@ class DocumentUpload extends Component
 
             $mimeType = $this->file->getMimeType();
 
-            $storedName = Str::uuid() . '.' . $this->file->extension();
-
+            $storedName = Str::uuid().'.'.$this->file->extension();
 
             $path = $this->file->storeAs('documents', $safeName, 'local');
 
             $document = Document::create([
-                'filename'  => $storedName,
+                'filename' => $storedName,
                 'original_filename' => $originalName,
-                'disk'      => 'local',   
-                'path'      => $path,
-                'size'      => $size,
+                'disk' => 'local',
+                'path' => $path,
+                'size' => $size,
                 'mime_type' => $mimeType,
-                'source'    => 'livewire_upload_' . uniqid(),
-                'status'    => 'uploaded',
+                'source' => 'livewire_upload_'.uniqid(),
+                'status' => 'uploaded',
             ]);
 
             // ✅ Dispatch job correctly (matches constructor)
@@ -118,9 +121,9 @@ class DocumentUpload extends Component
             $this->dispatch('$refresh');
 
         } catch (\Throwable $e) {
-            logger()->error('Upload Error: ' . $e->getMessage());
+            logger()->error('Upload Error: '.$e->getMessage());
 
-            $this->uploadStatus = '❌ Error: ' . $e->getMessage();
+            $this->uploadStatus = '❌ Error: '.$e->getMessage();
         } finally {
             $this->isUploading = false;
         }

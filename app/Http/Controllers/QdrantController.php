@@ -17,8 +17,8 @@ class QdrantController extends Controller
         ]);
 
         $saved = $qdrant->saveEmbedding(
-            $payload['document_id'], 
-            $payload['vector'], 
+            $payload['document_id'],
+            $payload['vector'],
             $payload['metadata'] ?? []
         );
 
@@ -37,7 +37,7 @@ class QdrantController extends Controller
         ]);
 
         $results = $qdrant->search(
-            $payload['vector'], 
+            $payload['vector'],
             $payload['limit'] ?? config('rag.retrieval.top_k', 5)
         );
 

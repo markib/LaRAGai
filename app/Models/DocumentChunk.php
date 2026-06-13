@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class DocumentChunk extends Model
 {
@@ -15,8 +16,6 @@ class DocumentChunk extends Model
         'content',
         'token_count',
     ];
-
-
 
     public function document()
     {
@@ -36,6 +35,12 @@ class DocumentChunk extends Model
 
     public function shortContent(int $limit = 120): string
     {
-        return \Illuminate\Support\Str::limit($this->content, $limit);
+        return Str::limit($this->content, $limit);
+    }
+
+    public function truncate(): void
+    {
+        $this->embeddings()->delete();
+        $this->delete();
     }
 }

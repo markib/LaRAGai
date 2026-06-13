@@ -16,7 +16,7 @@ class TestCommand extends Command
         $binary = $this->resolveTestBinary();
         $options = $this->buildOptions();
 
-        $command = PHP_BINARY . ' ' . escapeshellarg($binary) . ' ' . implode(' ', array_map('escapeshellarg', $options));
+        $command = PHP_BINARY.' '.escapeshellarg($binary).' '.implode(' ', array_map('escapeshellarg', $options));
         $process = Process::fromShellCommandline($command, base_path(), [
             'APP_ENV' => 'testing',
             'DB_CONNECTION' => 'sqlite',
@@ -56,11 +56,11 @@ class TestCommand extends Command
         $options = [];
 
         if ($this->option('colors')) {
-            $options[] = '--colors=' . $this->option('colors');
+            $options[] = '--colors='.$this->option('colors');
         }
 
         if ($this->option('filter')) {
-            $options[] = '--filter=' . $this->option('filter');
+            $options[] = '--filter='.$this->option('filter');
         }
 
         if ($this->option('parallel')) {
@@ -68,7 +68,7 @@ class TestCommand extends Command
         }
 
         if ($this->option('testsuite')) {
-            $options[] = '--testsuite=' . $this->option('testsuite');
+            $options[] = '--testsuite='.$this->option('testsuite');
         }
 
         return $options;

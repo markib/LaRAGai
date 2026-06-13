@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Document;
 use App\Models\DocumentChunk;
-use Illuminate\Console\Command;
 use App\Repositories\VectorRepositoryInterface;
+use Illuminate\Console\Command;
 
 class RagResetCommand extends Command
 {
@@ -13,30 +13,30 @@ class RagResetCommand extends Command
 
     protected $description = 'Clear documents, chunks and vector collection';
 
-    public function handle(
-        VectorRepositoryInterface $vectors
-    ): int {
-        $this->info('Clearing database...');
-
-        DocumentChunk::truncate();
-        Document::truncate();
-
-        $this->info('Database cleared.');
+    public function handle(VectorRepositoryInterface $vectors): int
+    {
+        $this->info('Starting RAG reset...');
 
         try {
-            $this->info('Deleting Qdrant collection...');
+            $this->info('Clearing Qdrant collection first...');
 
             $vectors->clearCollection();
 
-            $this->info('Qdrant collection deleted.');
+            $this->info('Qdrant cleared.');
+
+            $this->info('Clearing database...');
+
+            // safer than truncate in production RAG systems
+            DocumentChunk::query()->delete();
+            Document::query()->delete();
+
+            $this->info('Database cleared.');
         } catch (\Throwable $e) {
-            $this->warn(
-                'Failed to delete Qdrant collection: '
-                    . $e->getMessage()
-            );
+            $this->error('RAG reset failed: ' . $e->getMessage());
+            return self::FAILURE;
         }
 
-        $this->info('RAG reset completed.');
+        $this->info('RAG reset completed successfully.');
 
         return self::SUCCESS;
     }

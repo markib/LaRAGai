@@ -13,12 +13,14 @@
         "smalot/pdfparser": "^2.12"
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.5",
+        "fakerphp/faker": "^1.24",
+        "laravel/pint": "^1.29",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.6",
+        "nunomaduro/larastan": "^3.10",
         "pestphp/pest": "^3.8",
         "pestphp/pest-plugin-laravel": "^3.2",
-        "nunomaduro/collision": "^8.6",
-        "fakerphp/faker": "^1.24",
-        "mockery/mockery": "^1.6"
+        "phpunit/phpunit": "^11.5"
     },
     "autoload": {
         "psr-4": {

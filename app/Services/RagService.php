@@ -6,7 +6,6 @@ use App\Models\Document;
 use App\Models\DocumentChunk;
 use App\Models\DocumentEmbedding;
 use App\Repositories\QdrantVectorRepository;
-use App\Repositories\VectorRepositoryInterface;
 use App\Services\Contracts\EmbeddingProviderInterface;
 use App\Services\Contracts\GenerationProviderInterface;
 use App\Services\Contracts\RetrievalProviderInterface;
@@ -45,7 +44,7 @@ class RagService
         //     ];
         // }
 
-        // $document->markAsProcessing();
+        $document->markAsProcessing();
 
         try {
             $chunks = $this->chunkContent($content);
@@ -72,14 +71,11 @@ class RagService
                 // 2. Generate embedding
                 $embedding = $this->embedder->embed($chunkText);
                 logger()->info('EMBEDDING GENERATED');
-                logger()->info('Embedding Model', [
-                    'model' => config('ollama-laravel.embedding_model'),
-                ]);
+             
                 // 3. Store embedding (DB optional)
                 DocumentEmbedding::create([
                     'document_id' => $document->id,
                     'chunk_id' => $chunk->id,
-                    'embedding' => $embedding,
                     'model' => config('ollama-laravel.embedding_model', 'nomic-embed-text:latest'),
                 ]);
 
@@ -91,14 +87,13 @@ class RagService
                         'document_id' => $document->id,
                         'chunk_id' => $chunk->id,
                         'chunk_index' => $index,
-                        'content' => Str::limit($chunkText, 200),
+                        'content' => $chunkText,
                     ]
                 );
                 logger()->info('EMBEDDING SAVED');
             }
-            
 
-            // $document->markAsIndexed();
+            $document->markAsIndexed();
 
             return [
                 'document_id' => $document->id,
@@ -107,7 +102,7 @@ class RagService
             ];
         } catch (\Throwable $e) {
 
-            // $document->markAsFailed($e->getMessage());
+            $document->markAsFailed($e->getMessage());
 
             throw $e;
         }
@@ -166,7 +161,7 @@ class RagService
 
     protected function buildPrompt(string $query, string $context, ?string $sessionId): string
     {
-        $system = "You are a helpful AI assistant. Use ONLY provided context.";
+        $system = 'You are a helpful AI assistant. Use ONLY provided context.';
 
         return <<<PROMPT
 {$system}
@@ -204,25 +199,27 @@ PROMPT;
 
         $content = preg_replace('/\s+/', ' ', trim($content));
 
-        if (!$content) {
-            return [];
-        }
+        if (! $content) return [];
+
+        $sentences = preg_split('/(?<=[.!?])\s+/', $content);
 
         $chunks = [];
-        $start = 0;
-        $length = mb_strlen($content);
+        $chunk = '';
 
-        while ($start < $length) {
-            $chunks[] = mb_substr($content, $start, $size);
-            $start += ($size - $overlap);
+        foreach ($sentences as $sentence) {
 
-            logger()->info('INSERTING CHUNK', [
-                'index' => $start,
-            ]);
+            if (strlen($chunk . ' ' . $sentence) > $size) {
+                $chunks[] = trim($chunk);
+                $chunk = substr($chunk, -$overlap) . ' ' . $sentence;
+            } else {
+                $chunk .= ' ' . $sentence;
+            }
         }
-        logger()->info('RAG CHUNKS GENERATED', [
-            'count' => count($chunks ?? []),
-        ]);
+
+        if ($chunk) {
+            $chunks[] = trim($chunk);
+        }
+
         return $chunks;
     }
 }
