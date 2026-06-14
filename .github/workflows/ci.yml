@@ -48,7 +48,7 @@ jobs:
           mkdir -p storage/framework/views
           mkdir -p storage/framework/cache
           mkdir -p storage/framework/sessions
-          bootstrap/cache
+          mkdir -p bootstrap/cache
 
       - name: Generate app key
         run: php artisan key:generate
