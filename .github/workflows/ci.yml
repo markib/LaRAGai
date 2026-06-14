@@ -67,6 +67,7 @@ jobs:
       - name: Generate IDE Helpers for PHPStan
         run: |
           php artisan ide-helper:generate
+          php artisan ide-helper:models --nowrite --filename=_ide_helper_models.php
           php artisan ide-helper:meta  
   
       # 3. Static analysis
