@@ -62,8 +62,14 @@ jobs:
       # 2. Code style formatting
       - name: Check Code Style
         run: ./vendor/bin/pint --test
+
+      # 3. Generate IDE Helpers for PHPStan
+      - name: Generate IDE Helpers for PHPStan
+        run: |
+          php artisan ide-helper:generate
+          php artisan ide-helper:meta  
   
-            # 3. Static analysis
+      # 3. Static analysis
       - name: Static analysis (Larastan)
         run: ./vendor/bin/phpstan analyse
 
