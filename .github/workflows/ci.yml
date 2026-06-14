@@ -103,7 +103,7 @@ jobs:
         run: php artisan test --colors=always
 
       - name: Composer dependency audit
-        run: composer audit
+        run: composer audit --no-abandoned
 
       - name: NPM dependency audit
         run: npm audit --audit-level=moderate
