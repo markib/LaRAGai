@@ -81,7 +81,7 @@ jobs:
           DB_DATABASE: database/database.sqlite
         run: |
           php artisan ide-helper:generate
-          php artisan ide-helper:models --nowrite --filename=_ide_helper_models.php
+          php artisan ide-helper:models --nowrite --filename=_ide_helper_models.php --dir="app/Models"
           php artisan ide-helper:meta  
 
       - name: Static analysis (Larastan)
