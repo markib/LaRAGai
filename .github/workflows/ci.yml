@@ -65,6 +65,7 @@ jobs:
       - name: Prepare SQLite database
         run: |
           mkdir -p database
+          rm -f database/database.sqlite
           touch database/database.sqlite
 
       - name: Run migrations
