@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -23,21 +25,29 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
     public function __construct()
     {
-        $this->host = rtrim(config('rag.qdrant.host', 'http://127.0.0.1:6333'), '/');
-        $this->apiKey = config('rag.qdrant.api_key');
-        $this->collection = config('rag.qdrant.collection', 'documents');
-        $this->dimension = config('rag.qdrant.vector_dim', 1536);
-        $this->distance = config('rag.qdrant.distance', 'Cosine');
-        $this->vectorName = config('rag.qdrant.vector_name', self::VECTOR_NAME);
+        $this->host = rtrim((string) config('rag.qdrant.host', 'http://127.0.0.1:6333'), '/');
+        $this->apiKey = config('rag.qdrant.api_key') !== null ? (string) config('rag.qdrant.api_key') : null;
+        $this->collection = (string) config('rag.qdrant.collection', 'documents');
+        $this->dimension = (int) config('rag.qdrant.vector_dim', 1536);
+        $this->distance = (string) config('rag.qdrant.distance', 'Cosine');
+        $this->vectorName = (string) config('rag.qdrant.vector_name', self::VECTOR_NAME);
     }
 
-    protected function client()
+    /**
+     * Get the configured HTTP client builder instance.
+     */
+    protected function client(): PendingRequest
     {
         return Http::acceptJson()
             ->timeout(30)
             ->withHeaders($this->headers());
     }
 
+    /**
+     * Get the headers required for Qdrant API requests.
+     *
+     * @return array<string, string>
+     */
     protected function headers(): array
     {
         $headers = ['Accept' => 'application/json'];
@@ -50,6 +60,12 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         return $headers;
     }
 
+    /**
+     * Resolve vector definitions out of a generic cluster payload.
+     *
+     * @param  array<string, mixed> $body
+     * @return array<string, mixed>
+     */
     protected function resolveCollectionVectors(array $body): array
     {
         $candidateVectors = [
@@ -70,6 +86,12 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         return [];
     }
 
+    /**
+     * Normalize mixed named/unnamed vector definitions returned from engines.
+     *
+     * @param  array<mixed>         $vectors
+     * @return array<string, mixed>
+     */
     protected function normalizeVectorDefinitions(array $vectors): array
     {
         if ($this->isAssociativeArray($vectors)) {
@@ -83,13 +105,13 @@ class QdrantVectorRepository implements VectorRepositoryInterface
                 continue;
             }
 
-            if (isset($definition['name'])) {
+            if (isset($definition['name']) && is_string($definition['name'])) {
                 $normalized[$definition['name']] = $definition;
 
                 continue;
             }
 
-            if (isset($definition['vector_name'])) {
+            if (isset($definition['vector_name']) && is_string($definition['vector_name'])) {
                 $normalized[$definition['vector_name']] = $definition;
 
                 continue;
@@ -99,6 +121,11 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         return $normalized;
     }
 
+    /**
+     * Check if the provided array is an associative array.
+     *
+     * @param array<mixed> $array
+     */
     protected function isAssociativeArray(array $array): bool
     {
         if ($array === []) {
@@ -108,7 +135,12 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         return array_keys($array) !== range(0, count($array) - 1);
     }
 
-    protected function upsertPoints(array $payload)
+    /**
+     * Execute a point upsert action against the target cluster.
+     *
+     * @param array<string, mixed> $payload
+     */
+    protected function upsertPoints(array $payload): Response
     {
         $url = "{$this->host}/collections/{$this->collection}/points?wait=true";
 
@@ -121,6 +153,13 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         return $response;
     }
 
+    /**
+     * Save an embedding vector and its metadata payload.
+     *
+     * @param  array<int, float>    $embedding
+     * @param  array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
     public function saveEmbedding(int $documentId, array $embedding, array $payload = []): array
     {
         if (empty($embedding)) {
@@ -135,7 +174,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
         $this->ensureCollectionExists();
 
-        $payload = [
+        $pointsPayload = [
             'points' => [
                 [
                     'id' => $documentId,
@@ -149,7 +188,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             ],
         ];
 
-        $response = $this->upsertPoints($payload);
+        $response = $this->upsertPoints($pointsPayload);
 
         if (! $response->successful()) {
             $body = $response->body();
@@ -157,21 +196,22 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             if (str_contains($body, 'Wrong input: Not existing vector name error') || str_contains($body, 'Not existing vector name error')) {
                 $this->ensureCollectionExists();
 
-                $payload = [
+                $pointsPayload = [
                     'points' => [
                         [
                             'id' => $documentId,
                             'vectors' => [
                                 $this->vectorName => $embedding,
                             ],
+                            // FIXED: Removed redundant null coalescing checks tracking deterministic array states
                             'payload' => array_merge([
                                 'document_id' => $documentId,
-                            ], $payload['points'][0]['payload'] ?? []),
+                            ], $pointsPayload['points'][0]['payload']),
                         ],
                     ],
                 ];
 
-                $response = $this->upsertPoints($payload);
+                $response = $this->upsertPoints($pointsPayload);
 
                 if (! $response->successful()) {
                     $legacyPayload = [
@@ -181,7 +221,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
                                 'vector' => $embedding,
                                 'payload' => array_merge([
                                     'document_id' => $documentId,
-                                ], $payload['points'][0]['payload'] ?? []),
+                                ], $pointsPayload['points'][0]['payload']),
                             ],
                         ],
                     ];
@@ -202,7 +242,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
                         : [$embedding],
                     'payloads' => [array_merge([
                         'document_id' => $documentId,
-                    ], $payload['points'][0]['payload'] ?? [])],
+                    ], $pointsPayload['points'][0]['payload'])],
                 ];
 
                 $response = $this->upsertPoints($alternatePayload);
@@ -219,10 +259,16 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
         return [
             'document_id' => $documentId,
-            'metadata' => $payload['points'][0]['payload'] ?? [],
+            'metadata' => $pointsPayload['points'][0]['payload'],
         ];
     }
 
+    /**
+     * Search the vector database for nearest neighbors.
+     *
+     * @param  array<int, float>                                                                                                                                          $embedding
+     * @return array<int, array{chunk_id: int|string, document_id?: int|string|null, score?: float, chunk_index?: mixed, source?: mixed, payload?: array<string, mixed>}>
+     */
     public function search(array $embedding, int $limit = 5): array
     {
         $this->ensureCollectionExists();
@@ -237,18 +283,19 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             );
         }
 
-        $scoreThreshold = config('rag.retrieval.min_score', 0.0);
+        $scoreThreshold = (float) config('rag.retrieval.min_score', 0.0);
         $response = $this->searchPoints($embedding, $limit, $this->vectorName, $scoreThreshold);
 
         if (! $response->successful()) {
             throw new RuntimeException('Qdrant search failed: '.$response->body());
         }
 
+        /** @var array<int, array{id: int|string, score?: float, payload?: array<string, mixed>}> $hits */
         $hits = $response->json('result', []);
 
         return array_map(fn ($hit) => [
             'document_id' => isset($hit['payload']['document_id']) ? (int) $hit['payload']['document_id'] : (int) $hit['id'],
-            'chunk_id' => isset($hit['payload']['chunk_id']) ? (int) $hit['payload']['chunk_id'] : null,
+            'chunk_id' => isset($hit['payload']['chunk_id']) ? (int) $hit['payload']['chunk_id'] : (int) $hit['id'],
             'chunk_index' => $hit['payload']['chunk_index'] ?? null,
             'source' => $hit['payload']['source'] ?? null,
             'score' => isset($hit['score']) ? (float) $hit['score'] : 0.0,
@@ -256,7 +303,12 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         ], $hits);
     }
 
-    protected function searchPoints(array $vector, int $limit, string $vectorName, float $scoreThreshold = 0.0)
+    /**
+     * Perform the actual query vector search network transaction.
+     *
+     * @param array<int, float> $vector
+     */
+    protected function searchPoints(array $vector, int $limit, string $vectorName, float $scoreThreshold = 0.0): Response
     {
         $payload = [
             'vector' => [
@@ -275,6 +327,11 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             ->post("{$this->host}/collections/{$this->collection}/points/search", $payload);
     }
 
+    /**
+     * Retrieve a specific point definition by ID.
+     *
+     * @return array<string, mixed>|null
+     */
     public function getPoint(int $documentId): ?array
     {
         $response = $this->client()
@@ -288,7 +345,10 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             throw new RuntimeException('Qdrant fetch failed: '.$response->body());
         }
 
-        return $response->json();
+        /** @var array<string, mixed>|null $data */
+        $data = $response->json();
+
+        return $data;
     }
 
     public function deletePoint(int $documentId): bool
@@ -328,6 +388,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             ->get("{$this->host}/collections/{$this->collection}");
 
         if ($response->status() === 200) {
+            /** @var array<string, mixed> $body */
             $body = $response->json();
             $vectors = $this->resolveCollectionVectors($body);
             $vectorSizes = $this->resolveCollectionVectorDimensions($body);
@@ -366,19 +427,14 @@ class QdrantVectorRepository implements VectorRepositoryInterface
             return;
         }
 
+        /** @var array<string, mixed> $body */
         $body = $response->json();
         $vectors = $this->resolveCollectionVectors($body);
         $this->syncVectorNameWithCollection($vectors);
         $vectorSizes = $this->resolveCollectionVectorDimensions($body);
         $currentSize = $vectorSizes[$this->vectorName] ?? null;
 
-        if ($currentSize === null) {
-            $this->dimension = $vectorLength;
-
-            return;
-        }
-
-        if ($currentSize === $vectorLength) {
+        if ($currentSize === null || $currentSize === $vectorLength) {
             $this->dimension = $vectorLength;
 
             return;
@@ -395,7 +451,7 @@ class QdrantVectorRepository implements VectorRepositoryInterface
 
         throw new RuntimeException(sprintf(
             'Qdrant collection "%s" was created with vector dimension %d but the embedding length is %d. '.
-            'Please recreate the collection with the matching dimension or set QDRANT_VECTOR_DIM=%d.',
+                'Please recreate the collection with the matching dimension or set QDRANT_VECTOR_DIM=%d.',
             $this->collection,
             $currentSize,
             $vectorLength,
@@ -413,6 +469,12 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         }
     }
 
+    /**
+     * Resolve mapped collection dimension properties out of dynamic payload configuration options.
+     *
+     * @param  array<string, mixed> $body
+     * @return array<string, int>
+     */
     protected function resolveCollectionVectorDimensions(array $body): array
     {
         $vectors = $this->resolveCollectionVectors($body);
@@ -433,6 +495,11 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         return $dimensions;
     }
 
+    /**
+     * Resolve vector engine document counting trackers out of cluster body specifications.
+     *
+     * @param array<string, mixed> $body
+     */
     protected function resolveCollectionPointCount(array $body): ?int
     {
         if (isset($body['result']['point_count'])) {
@@ -454,6 +521,11 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         return null;
     }
 
+    /**
+     * Sync local context definitions configuration vectors matching parameters.
+     *
+     * @param array<string, mixed> $vectors
+     */
     protected function syncVectorNameWithCollection(array $vectors): void
     {
         if (isset($vectors[$this->vectorName])) {
@@ -467,13 +539,13 @@ class QdrantVectorRepository implements VectorRepositoryInterface
         }
 
         if (count($vectors) === 1) {
-            $this->vectorName = array_key_first($vectors);
+            $this->vectorName = (string) array_key_first($vectors);
 
             return;
         }
 
-        if (! empty($vectors) && ! isset($vectors[$this->vectorName])) {
-            $this->vectorName = array_key_first($vectors);
+        if (! empty($vectors)) {
+            $this->vectorName = (string) array_key_first($vectors);
         }
     }
 }

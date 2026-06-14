@@ -2,6 +2,8 @@
 
 namespace App\Services\Providers;
 
+use App\DTO\Bm25Result;
+use App\DTO\RetrievalResult;
 use App\Models\DocumentChunk;
 use App\Repositories\DocumentRepository;
 use App\Repositories\VectorRepositoryInterface;
@@ -18,6 +20,9 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
         protected PostgresBm25Retriever $bm25Retriever
     ) {}
 
+    /**
+     * @return array<int, RetrievalResult>
+     */
     public function search(string $query, int $limit = 5): array
     {
         $queryEmbedding = $this->embedder->embed($query);
@@ -48,6 +53,11 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
         return $this->hydrateChunks($matches);
     }
 
+    /**
+     * @param  array<int, array{chunk_id?: string|int, document_id?: string|int, score?: float|int}>   $vectorResults
+     * @param  array<int, Bm25Result>                                                                  $bm25Results   <-- FIXED: Pointing directly to your DTO class
+     * @return array<int, array{chunk_id: string|int, document_id: string|int|null, score: float|int}>
+     */
     protected function reciprocalRankFusion(
         array $vectorResults,
         array $bm25Results,
@@ -75,11 +85,11 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
 
         foreach ($bm25Results as $rank => $result) {
 
-            $chunkId = $result['id'];
+            $chunkId = $result->id;
 
             $scores[$chunkId] ??= [
                 'chunk_id' => $chunkId,
-                'document_id' => $result['document_id'],
+                'document_id' => $result->documentId,
                 'score' => 0,
             ];
 
@@ -99,6 +109,10 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
         );
     }
 
+    /**
+     * @param  array<int, array{chunk_id: string|int, document_id?: string|int|null, score: float|int}> $matches
+     * @return array<int, RetrievalResult>
+     */
     protected function hydrateChunks(array $matches): array
     {
         $chunkIds = array_column(
@@ -123,16 +137,17 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
 
             $chunk = $chunks[$chunkId];
 
-            $results[] = [
-                'id' => $chunk->id,
-                'document_id' => $chunk->document_id,
-                'chunk_id' => $chunk->id,
-                'chunk_index' => $chunk->chunk_index,
-                'content' => $chunk->content,
-                'filename' => $chunk->document?->filename,
-                'original_filename' => $chunk->document?->original_filename,
-                'score' => $match['score'],
-            ];
+            $results[] = new RetrievalResult(
+                id: $chunk->id,
+                documentId: $chunk->document_id,
+                chunkId: $chunk->id,
+                chunkIndex: $chunk->chunk_index,
+                content: $chunk->content,
+                score: $match['score'],
+                filename: $chunk->document?->filename,
+                originalFilename: $chunk->document?->original_filename,
+                source: $chunk->document?->source,
+            );
         }
 
         return $results;

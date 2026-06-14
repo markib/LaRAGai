@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -19,8 +20,14 @@ class DocumentUpload extends Component
 
     public string $uploadStatus = '';
 
+    /**
+     * @var array<int, array{id: int, filename: string, original_filename: string, created_at: string}>
+     */
     public array $uploadedDocuments = [];
 
+    /**
+     * @var array<string, string>
+     */
     protected $listeners = [
         'documents-updated' => 'loadDocuments',
     ];
@@ -32,18 +39,18 @@ class DocumentUpload extends Component
 
     public function loadDocuments(): void
     {
-
-        $this->uploadedDocuments = Document::query()
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Document> $documents */
+        $documents = Document::query()
             ->latest()
             ->limit(10)
-            ->get()
-            ->map(fn ($doc) => [
-                'id' => $doc->id,
-                'filename' => $doc->filename,
-                'original_filename' => $doc->original_filename,
-                'created_at' => optional($doc->created_at)->format('M d, Y H:i'),
-            ])
-            ->toArray();
+            ->get();
+
+        $this->uploadedDocuments = $documents->map(fn(Document $doc) => [
+            'id' => $doc->id,
+            'filename' => $doc->filename,
+            'original_filename' => $doc->original_filename,
+            'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y H:i') : '',
+        ])->toArray();
     }
 
     public function updatedFile(): void
@@ -77,13 +84,12 @@ class DocumentUpload extends Component
 
             $originalName = $this->file->getClientOriginalName();
 
-            $safeName = now()->timestamp.'_'.preg_replace(
+            $safeName = now()->timestamp . '_' . preg_replace(
                 '/[^A-Za-z0-9_\-\.]/',
                 '_',
                 $originalName
             );
 
-            // ✅ FIX: get size safely (Livewire tmp bug workaround)
             $realPath = $this->file->getRealPath();
             $size = ($realPath && file_exists($realPath))
                 ? filesize($realPath)
@@ -91,45 +97,42 @@ class DocumentUpload extends Component
 
             $mimeType = $this->file->getMimeType();
 
-            $storedName = Str::uuid().'.'.$this->file->extension();
+            $storedName = Str::uuid() . '.' . $this->file->extension();
 
             $path = $this->file->storeAs('documents', $safeName, 'local');
 
-            $document = Document::create([
+            /** @var Document $document */
+            $document = Document::query()->create([
                 'filename' => $storedName,
                 'original_filename' => $originalName,
                 'disk' => 'local',
                 'path' => $path,
                 'size' => $size,
                 'mime_type' => $mimeType,
-                'source' => 'livewire_upload_'.uniqid(),
+                'source' => 'livewire_upload_' . uniqid(),
                 'status' => 'uploaded',
             ]);
 
-            // ✅ Dispatch job correctly (matches constructor)
             IndexDocumentJob::dispatch($document->id);
 
             $this->uploadStatus = "✅ '{$originalName}' uploaded successfully!";
 
             $this->reset('file');
 
-            // ✅ reload data
             $this->loadDocuments();
 
-            // ✅ trigger UI refresh (important in v4)
             $this->dispatch('documents-updated');
             $this->dispatch('$refresh');
-
         } catch (\Throwable $e) {
-            logger()->error('Upload Error: '.$e->getMessage());
+            logger()->error('Upload Error: ' . $e->getMessage());
 
-            $this->uploadStatus = '❌ Error: '.$e->getMessage();
+            $this->uploadStatus = '❌ Error: ' . $e->getMessage();
         } finally {
             $this->isUploading = false;
         }
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.document-upload');
     }

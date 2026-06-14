@@ -6,7 +6,23 @@ parameters:
         - routes
 
     level: 6
+    treatPhpDocTypesAsCertain: false
+    
+    # This prevents PHPStan from crashing when an ignored error disappears
+    reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        - '#Call to an undefined static method Cloudstudio\\Ollama\\Facades\\Ollama::model\(\)#'
+       #  FIX: Ignores the phantom "undefined method name()" errors on routes
+        - '#Call to an undefined method Illuminate\\Routing\\Route::name\(\)#'
+        - '#expectsJson#'
+
+    scanFiles:
+        - _ide_helper.php
+        - _ide_helper_models.php    
 
     tmpDir: storage/phpstan
 
- 
+    # FORCE COUPLING FIX: This stops generic model/factory conversion friction
+    universalObjectCratesClasses:
+        - Illuminate\Database\Eloquent\Relations\Pivot

@@ -5,60 +5,69 @@ namespace App\Http\Controllers;
 use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Services\RagService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class RagController extends Controller
 {
     /**
-     * INGEST DOCUMENT (CLEAN VERSION)
+     * INGEST DOCUMENT
      */
-    public function ingest(Request $request)
+    public function ingest(Request $request): JsonResponse
     {
+        /** @var array{content?: string|null} $payload */
         $payload = $request->validate([
             'content' => 'nullable|string|required_without:document',
             'document' => 'nullable|file|max:20480',
         ]);
 
-        $file = $request->file('document');
+        /** @var \Illuminate\Http\UploadedFile|null $file */
+        $file = $request->files->get('document');
         $content = $payload['content'] ?? null;
 
-        /**
-         * STEP 1: Handle file upload
-         */
-        if ($file) {
+        $safeName = null;
+        $path = null;
 
+        /**
+         * STEP 1: File handling
+         */
+        if ($file !== null) {
             $originalName = $file->getClientOriginalName();
 
-            $safeName = Str::uuid().'_'.$originalName;
+            $safeName = (string) Str::uuid() . '_' . $originalName;
 
             $path = $file->storeAs('documents', $safeName, 'local');
 
-            $content = null; // parser will handle later
+            $content = null;
         }
 
-        if (! $file && empty($content)) {
+        if ($file === null && ($content === null || $content === '')) {
             return response()->json([
                 'message' => 'Please provide a file or content.',
             ], 422);
         }
 
         /**
-         * STEP 2: Create Document record FIRST
+         * STEP 2: Create document
          */
-        $document = Document::create([
-            'filename' => $file ? $safeName : 'manual_'.Str::uuid(),
-            'original_filename' => $file ? $file->getClientOriginalName() : null,
+        /** @var Document $document */
+        $document = Document::query()->create([
+            'filename' => $file !== null && $safeName !== null
+                ? $safeName
+                : 'manual_' . (string) Str::uuid(),
+
+            'original_filename' => $file?->getClientOriginalName(),
+
             'disk' => 'local',
-            'path' => $file ? $path : null,
+            'path' => $path,
             'mime_type' => $file?->getMimeType(),
             'size' => $file?->getSize() ?? 0,
             'status' => 'uploaded',
         ]);
 
         /**
-         * STEP 3: Dispatch job (ONLY document_id)
+         * STEP 3: Queue indexing
          */
         IndexDocumentJob::dispatch($document->id);
 
@@ -69,22 +78,23 @@ class RagController extends Controller
     }
 
     /**
-     * QUERY RAG (UNCHANGED - GOOD)
+     * QUERY RAG
      */
-    public function query(Request $request, RagService $ragService)
+    public function query(Request $request, RagService $ragService): JsonResponse
     {
-        $payload = Validator::make($request->all(), [
+        /** @var array{query: string, session_id?: string|null, top_k?: int} $validated */
+        $validated = $request->validate([
             'query' => 'required|string',
             'session_id' => 'nullable|string',
             'top_k' => 'nullable|integer|min:1|max:20',
-        ])->validated();
+        ]);
+
+        $queryText = $validated['query'];
+        $sessionId = $validated['session_id'] ?? null;
+        $topK = $validated['top_k'] ?? 5;
 
         return response()->json(
-            $ragService->answer(
-                $payload['query'],
-                $payload['session_id'] ?? null,
-                $payload['top_k'] ?? 5
-            )
+            $ragService->answer($queryText, $sessionId, $topK)
         );
     }
 }

@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Repositories\ConversationRepository;
 use App\Services\RagService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -12,10 +13,16 @@ class Chat extends Component
 {
     public ?string $sessionId = null;
 
+    /**
+     * @var array<int, array{role: string, message: string, created_at: string}>
+     */
     public array $messages = [];
 
     public string $currentQuery = '';
 
+    /**
+     * @var array<int, mixed>
+     */
     public array $retrievedDocuments = [];
 
     public int $topK = 5;
@@ -47,7 +54,9 @@ class Chat extends Component
     public function loadMessages(): void
     {
         try {
-            $this->messages = $this->conversationRepository->getMessages($this->sessionId);
+            /** @var array<int, array{role: string, message: string, created_at: string}> $history */
+            $history = $this->conversationRepository->getMessages($this->sessionId);
+            $this->messages = $history;
         } catch (\Throwable $e) {
             $this->errorMessage = 'Failed to load messages.';
             logger()->error($e);
@@ -84,8 +93,12 @@ class Chat extends Component
                 limit: $this->topK
             );
 
+            /** @var string $answer */
             $answer = $result['answer'] ?? 'Sorry, I could not generate a response.';
-            $this->retrievedDocuments = $result['documents'] ?? [];
+
+            /** @var array<int, mixed> $docs */
+            $docs = $result['documents'] ?? [];
+            $this->retrievedDocuments = $docs;
 
             $this->stream(
                 to: 'answer',
@@ -117,11 +130,8 @@ class Chat extends Component
         } catch (\Throwable $e) {
             $this->handleError($e);
         } finally {
-            // Always executed
-
             $this->currentQuery = '';
 
-            // Optional analytics/logging
             logger()->info('Chat request completed', [
                 'session_id' => $this->sessionId,
             ]);
@@ -136,15 +146,12 @@ class Chat extends Component
     protected function resetChat(): void
     {
         $this->messages = [];
-
         $this->retrievedDocuments = [];
-
     }
 
     protected function handleError(\Throwable $e): void
     {
         $this->errorMessage = 'Something went wrong. Please try again.';
-
         logger()->error($e->getMessage());
     }
 
@@ -153,13 +160,16 @@ class Chat extends Component
         $this->errorMessage = '';
     }
 
+    /**
+     * @return array<int, array{role: string, message: string, created_at: string}>
+     */
     #[Computed]
     public function messageList(): array
     {
         return $this->messages;
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.chat', [
             'messages' => $this->messageList(),

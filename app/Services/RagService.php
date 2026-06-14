@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\DTO\IngestResult;
+use App\DTO\RetrievalResult;
 use App\Models\Document;
 use App\Models\DocumentChunk;
 use App\Models\DocumentEmbedding;
@@ -26,14 +28,15 @@ class RagService
     |--------------------------------------------------------------------------
     */
 
-    public function ingestDocument(int $documentId, string $content): array
+    public function ingestDocument(int $documentId, string $content): IngestResult
     {
         logger()->info('RAG INGEST START', [
             'document_id' => $documentId,
             'content_length' => strlen($content),
         ]);
 
-        $document = Document::findOrFail($documentId);
+        /** @var Document $document */
+        $document = Document::query()->findOrFail($documentId);
 
         // Prevent duplicate ingestion in concurrent jobs
         // if ($document->status === 'processing') {
@@ -57,7 +60,8 @@ class RagService
                     'index' => $index,
                 ]);
                 // 1. Create chunk
-                $chunk = DocumentChunk::create([
+                /** @var DocumentChunk $chunk */
+                $chunk = DocumentChunk::query()->create([
                     'document_id' => $document->id,
                     'chunk_index' => $index,
                     'content' => $chunkText,
@@ -72,9 +76,12 @@ class RagService
                 $embedding = $this->embedder->embed($chunkText);
                 logger()->info('EMBEDDING GENERATED');
 
+                /** @var int $documentId */
+                $documentId = $document->id;
+
                 // 3. Store embedding (DB optional)
-                DocumentEmbedding::create([
-                    'document_id' => $document->id,
+                DocumentEmbedding::query()->create([
+                    'document_id' => $documentId,
                     'chunk_id' => $chunk->id,
                     'model' => config('ollama-laravel.embedding_model', 'nomic-embed-text:latest'),
                 ]);
@@ -95,11 +102,11 @@ class RagService
 
             $document->markAsIndexed();
 
-            return [
-                'document_id' => $document->id,
-                'chunks' => count($chunks),
-                'status' => 'indexed',
-            ];
+            return new IngestResult(
+                documentId: $document->id,
+                chunks: count($chunks),
+                status: 'indexed'
+            );
         } catch (\Throwable $e) {
 
             $document->markAsFailed($e->getMessage());
@@ -114,6 +121,9 @@ class RagService
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * @return array<int, RetrievalResult>
+     */
     public function retrieve(string $query, int $limit = 5): array
     {
         return $this->retriever->search($query, $limit);
@@ -123,8 +133,15 @@ class RagService
     |--------------------------------------------------------------------------
     | RAG ANSWER PIPELINE
     |--------------------------------------------------------------------------
-    */
+     */
 
+    /**
+     * @return array{
+     *     answer:string,
+     *     documents:array<int, RetrievalResult>,
+     *     session_id:string|null
+     * }
+     */
     public function answer(string $query, ?string $sessionId = null, int $limit = 5): array
     {
         $results = $this->retrieve($query, $limit);
@@ -179,13 +196,16 @@ Rules:
 PROMPT;
     }
 
+    /**
+     * @param array<int, RetrievalResult> $documents
+     */
     protected function buildContext(array $documents): string
     {
         return collect($documents)
-            ->map(function ($doc, $i) {
-                return "[{$i}] {$doc['content']}";
-            })
-            ->join("\n\n");
+            ->map(
+                fn (RetrievalResult $doc, int $i) => "[{$i}] {$doc->content}"
+            )
+            ->implode("\n\n");
     }
 
     /*
@@ -194,6 +214,9 @@ PROMPT;
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * @return array<int,string>
+     */
     protected function chunkContent(string $content, int $size = 900, int $overlap = 150): array
     {
 
@@ -204,6 +227,10 @@ PROMPT;
         }
 
         $sentences = preg_split('/(?<=[.!?])\s+/', $content);
+
+        if ($sentences === false) {
+            return [];
+        }
 
         $chunks = [];
         $chunk = '';

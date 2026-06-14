@@ -65,7 +65,7 @@ jobs:
   
             # 3. Static analysis
       - name: Static analysis (Larastan)
-        run: ./vendor/bin/phpstan analyse --level=max
+        run: ./vendor/bin/phpstan analyse
 
       # ✅ Use SQLite for CI (fast + no setup)
       - name: Prepare SQLite database

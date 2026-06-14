@@ -14,6 +14,9 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
 
     protected string $embeddingModel;
 
+    /**
+     * @var list<string>
+     */
     protected array $embeddingModelCandidates;
 
     public function __construct()
@@ -28,6 +31,9 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
         ])));
     }
 
+    /**
+     * @return array<int, float>
+     */
     public function embed(string $text): array
     {
         $errors = [];
@@ -36,7 +42,7 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
             try {
                 $embedding = $this->requestEmbedding($candidate, $text);
 
-                if (is_array($embedding) && count($embedding) > 0) {
+                if (count($embedding) > 0) {
                     return $embedding;
                 }
 
@@ -51,6 +57,9 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
         );
     }
 
+    /**
+     * @return array<int, float>
+     */
     protected function requestEmbedding(string $model, string $text): array
     {
         $url = rtrim(config('ollama-laravel.url', 'http://127.0.0.1:11434'), '/').'/v1/embeddings';
@@ -66,6 +75,7 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
 
         $payload = $response->json();
 
+        /** @var array<string, mixed> $payload */
         if (isset($payload['error'])) {
             throw new RuntimeException('Ollama error for '.$model.': '.$payload['error']);
         }
@@ -104,6 +114,9 @@ class OllamaProvider implements EmbeddingProviderInterface, GenerationProviderIn
         return $embedding;
     }
 
+    /**
+     * @param array<string,mixed> $context
+     */
     public function generate(string $prompt, array $context = []): string
     {
         $result = Ollama::model($this->model)

@@ -51,6 +51,9 @@ class TestCommand extends Command
         return '';
     }
 
+    /**
+     * @return array<int, string>
+     */
     protected function buildOptions(): array
     {
         $options = [];
@@ -59,8 +62,8 @@ class TestCommand extends Command
             $options[] = '--colors='.$this->option('colors');
         }
 
-        if ($this->option('filter')) {
-            $options[] = '--filter='.$this->option('filter');
+        if ((string) $this->option('filter')) {
+            $options[] = '--filter='.(string) $this->option('filter');
         }
 
         if ($this->option('parallel')) {

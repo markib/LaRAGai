@@ -20,7 +20,7 @@ class IndexDocumentJob implements ShouldQueue
         RagService $ragService,
         DocumentParser $parser
     ): void {
-        $document = Document::findOrFail($this->documentId);
+        $document = Document::query()->findOrFail($this->documentId);
 
         // Prevent duplicate processing
         if ($document->status === 'processing') {

@@ -11,7 +11,6 @@ use App\Services\Contracts\GenerationProviderInterface;
 use App\Services\Contracts\RetrievalProviderInterface;
 use App\Services\Providers\LocalRetrievalProvider;
 use App\Services\Providers\OllamaProvider;
-use App\Services\Providers\OpenAIProvider;
 use App\Services\Retrieval\PostgresBm25Retriever;
 use Illuminate\Support\ServiceProvider;
 
@@ -19,11 +18,9 @@ class RagServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $defaultProvider = config('rag.provider', 'ollama');
-        $providerClass = $defaultProvider === 'openai' ? OpenAIProvider::class : OllamaProvider::class;
 
-        $this->app->singleton(EmbeddingProviderInterface::class, $providerClass);
-        $this->app->singleton(GenerationProviderInterface::class, $providerClass);
+        $this->app->singleton(EmbeddingProviderInterface::class, OllamaProvider::class);
+        $this->app->singleton(GenerationProviderInterface::class, OllamaProvider::class);
         $this->app->singleton(
             PostgresBm25Retriever::class
         );

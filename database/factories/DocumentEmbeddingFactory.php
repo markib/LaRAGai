@@ -7,6 +7,9 @@ use App\Models\DocumentChunk;
 use App\Models\DocumentEmbedding;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<DocumentEmbedding>
+ */
 class DocumentEmbeddingFactory extends Factory
 {
     protected $model = DocumentEmbedding::class;

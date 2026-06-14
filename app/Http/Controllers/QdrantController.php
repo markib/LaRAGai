@@ -3,12 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Repositories\QdrantVectorRepository;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class QdrantController extends Controller
 {
-    public function store(Request $request, QdrantVectorRepository $qdrant)
+    public function store(Request $request, QdrantVectorRepository $qdrant): JsonResponse
     {
+        /** @var array{
+         *     document_id: int,
+         *     vector: array<int, float>,
+         *     metadata?: array<string, mixed>
+         * } $payload
+         */
         $payload = $request->validate([
             'document_id' => 'required|integer',
             'vector' => 'required|array',
@@ -28,8 +35,13 @@ class QdrantController extends Controller
         ]);
     }
 
-    public function search(Request $request, QdrantVectorRepository $qdrant)
+    public function search(Request $request, QdrantVectorRepository $qdrant): JsonResponse
     {
+        /** @var array{
+         *     vector: array<int, float>,
+         *     limit?: int
+         * } $payload
+         */
         $payload = $request->validate([
             'vector' => 'required|array',
             'vector.*' => 'numeric',
@@ -44,7 +56,7 @@ class QdrantController extends Controller
         return response()->json(['results' => $results]);
     }
 
-    public function show(int $documentId, QdrantVectorRepository $qdrant)
+    public function show(int $documentId, QdrantVectorRepository $qdrant): JsonResponse
     {
         $point = $qdrant->getPoint($documentId);
 
@@ -55,14 +67,14 @@ class QdrantController extends Controller
         return response()->json($point);
     }
 
-    public function destroy(int $documentId, QdrantVectorRepository $qdrant)
+    public function destroy(int $documentId, QdrantVectorRepository $qdrant): JsonResponse
     {
         $qdrant->deletePoint($documentId);
 
         return response()->json(['status' => 'deleted']);
     }
 
-    public function clear(QdrantVectorRepository $qdrant)
+    public function clear(QdrantVectorRepository $qdrant): JsonResponse
     {
         $qdrant->clearCollection();
 

@@ -7,33 +7,41 @@ use App\Models\Document;
 class DocumentRepository
 {
     /**
-     * Fetch single document
+     * Fetch single document.
      */
     public function find(int $id): ?Document
     {
-        return Document::find($id);
+        return Document::query()->find($id);
     }
 
     /**
-     * Fetch multiple documents by IDs
+     * Fetch multiple documents by IDs.
+     *
+     * @param  array<int, int|string>                                                                                     $ids
+     * @return array<int, array{id: int, filename: string, original_filename: string, status: string, created_at: mixed}>
      */
     public function findByIds(array $ids): array
     {
-        $ids = array_values(array_unique($ids));
+        $uniqueIds = array_values(array_unique($ids));
 
-        $documents = Document::whereIn('id', $ids)
+        $documents = Document::query()->whereIn('id', $uniqueIds)
             ->get()
             ->keyBy('id');
 
-        return collect($ids)
+        return collect($uniqueIds)
             ->filter(fn ($id) => $documents->has($id))
-            ->map(fn ($id) => $documents->get($id)->only([
-                'id',
-                'filename',
-                'original_filename',
-                'status',
-                'created_at',
-            ]))
+            ->map(function ($id) use ($documents) {
+                /** @var Document $document */
+                $document = $documents->get($id);
+
+                return $document->only([
+                    'id',
+                    'filename',
+                    'original_filename',
+                    'status',
+                    'created_at',
+                ]);
+            })
             ->values()
             ->toArray();
     }

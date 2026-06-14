@@ -6,6 +6,9 @@ use App\Models\Document;
 use App\Models\DocumentChunk;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<DocumentChunk>
+ */
 class DocumentChunkFactory extends Factory
 {
     protected $model = DocumentChunk::class;
