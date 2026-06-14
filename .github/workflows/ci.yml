@@ -68,6 +68,11 @@ jobs:
           rm -f database/database.sqlite
           touch database/database.sqlite
 
+      # Add this step right here 👇
+      - name: Start Qdrant Vector Database
+        run: |
+          docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant    
+
       - name: Run migrations
         env:
           DB_CONNECTION: sqlite
