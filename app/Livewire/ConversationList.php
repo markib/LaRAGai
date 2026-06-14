@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Conversation;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -36,7 +37,7 @@ class ConversationList extends Component
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            /** @var \Illuminate\Database\Eloquent\Collection<int, Conversation> $collection */
+            /** @var Collection<int, Conversation> $collection */
             $this->conversations = $collection
                 ->groupBy(function (Conversation $item) {
                     return $item->created_at ? $item->created_at->format('Y-m-d') : now()->format('Y-m-d');

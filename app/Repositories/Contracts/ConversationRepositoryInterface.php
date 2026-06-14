@@ -7,7 +7,7 @@ interface ConversationRepositoryInterface
     /**
      * Get messages for the conversation.
      *
-     * @return array<int, mixed> 
+     * @return array<int, mixed>
      */
     public function getMessages(string $sessionId): array;
 

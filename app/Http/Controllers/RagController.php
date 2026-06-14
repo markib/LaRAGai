@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Services\RagService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 class RagController extends Controller
@@ -22,7 +23,7 @@ class RagController extends Controller
             'document' => 'nullable|file|max:20480',
         ]);
 
-        /** @var \Illuminate\Http\UploadedFile|null $file */
+        /** @var UploadedFile|null $file */
         $file = $request->files->get('document');
         $content = $payload['content'] ?? null;
 
@@ -35,7 +36,7 @@ class RagController extends Controller
         if ($file !== null) {
             $originalName = $file->getClientOriginalName();
 
-            $safeName = (string) Str::uuid() . '_' . $originalName;
+            $safeName = (string) Str::uuid().'_'.$originalName;
 
             $path = $file->storeAs('documents', $safeName, 'local');
 
@@ -55,7 +56,7 @@ class RagController extends Controller
         $document = Document::query()->create([
             'filename' => $file !== null && $safeName !== null
                 ? $safeName
-                : 'manual_' . (string) Str::uuid(),
+                : 'manual_'.(string) Str::uuid(),
 
             'original_filename' => $file?->getClientOriginalName(),
 

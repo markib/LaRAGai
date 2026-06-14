@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\DocumentFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property-read int|null $chunks_count
  * @property-read Collection<int, DocumentEmbedding> $embeddings
  * @property-read int|null $embeddings_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document query()
@@ -40,12 +42,13 @@ use Illuminate\Support\Carbon;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereSize($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereStatus($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereUpdatedAt($value)
- * @mixin \Illuminate\Database\Eloquent\Model
+ *
+ * @mixin Model
  * @mixin IdeHelperDocument
  */
 class Document extends Model
 {
-    /** @use HasFactory<\Database\Factories\DocumentFactory> */
+    /** @use HasFactory<DocumentFactory> */
     use HasFactory;
 
     protected $fillable = [

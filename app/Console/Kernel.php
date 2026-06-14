@@ -3,13 +3,14 @@
 namespace App\Console;
 
 use App\Console\Commands\TestCommand;
+use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
     /**
-     * @var array<class-string<\Illuminate\Console\Command>>
+     * @var array<class-string<Command>>
      */
     protected $commands = [
         TestCommand::class,

@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -39,13 +40,13 @@ class DocumentUpload extends Component
 
     public function loadDocuments(): void
     {
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Document> $documents */
+        /** @var Collection<int, Document> $documents */
         $documents = Document::query()
             ->latest()
             ->limit(10)
             ->get();
 
-        $this->uploadedDocuments = $documents->map(fn(Document $doc) => [
+        $this->uploadedDocuments = $documents->map(fn (Document $doc) => [
             'id' => $doc->id,
             'filename' => $doc->filename,
             'original_filename' => $doc->original_filename,
@@ -84,7 +85,7 @@ class DocumentUpload extends Component
 
             $originalName = $this->file->getClientOriginalName();
 
-            $safeName = now()->timestamp . '_' . preg_replace(
+            $safeName = now()->timestamp.'_'.preg_replace(
                 '/[^A-Za-z0-9_\-\.]/',
                 '_',
                 $originalName
@@ -97,7 +98,7 @@ class DocumentUpload extends Component
 
             $mimeType = $this->file->getMimeType();
 
-            $storedName = Str::uuid() . '.' . $this->file->extension();
+            $storedName = Str::uuid().'.'.$this->file->extension();
 
             $path = $this->file->storeAs('documents', $safeName, 'local');
 
@@ -109,7 +110,7 @@ class DocumentUpload extends Component
                 'path' => $path,
                 'size' => $size,
                 'mime_type' => $mimeType,
-                'source' => 'livewire_upload_' . uniqid(),
+                'source' => 'livewire_upload_'.uniqid(),
                 'status' => 'uploaded',
             ]);
 
@@ -124,9 +125,9 @@ class DocumentUpload extends Component
             $this->dispatch('documents-updated');
             $this->dispatch('$refresh');
         } catch (\Throwable $e) {
-            logger()->error('Upload Error: ' . $e->getMessage());
+            logger()->error('Upload Error: '.$e->getMessage());
 
-            $this->uploadStatus = '❌ Error: ' . $e->getMessage();
+            $this->uploadStatus = '❌ Error: '.$e->getMessage();
         } finally {
             $this->isUploading = false;
         }

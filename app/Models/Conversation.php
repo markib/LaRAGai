@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
- * @property int                         $id
- * @property string                      $session_id
+ * @property int                          $id
+ * @property string                       $session_id
  * @property array<array-key, mixed>|null $messages
  * @property Carbon|null                  $created_at
  * @property Carbon|null                  $updated_at
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Conversation newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Conversation newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Conversation query()
@@ -19,7 +20,8 @@ use Illuminate\Support\Carbon;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Conversation whereMessages($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Conversation whereSessionId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Conversation whereUpdatedAt($value)
- * @mixin \Illuminate\Database\Eloquent\Model
+ *
+ * @mixin Model
  * @mixin IdeHelperConversation
  */
 class Conversation extends Model

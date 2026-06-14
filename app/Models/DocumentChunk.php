@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\DocumentChunkFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,7 @@ use Illuminate\Support\Str;
  * @property-read Document $document
  * @property-read Collection<int, DocumentEmbedding> $embeddings
  * @property-read int|null $embeddings_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentChunk newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentChunk newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentChunk query()
@@ -31,12 +33,13 @@ use Illuminate\Support\Str;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentChunk whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentChunk whereTokenCount($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentChunk whereUpdatedAt($value)
- * @mixin \Illuminate\Database\Eloquent\Model
+ *
+ * @mixin Model
  * @mixin IdeHelperDocumentChunk
  */
 class DocumentChunk extends Model
 {
-    /** @use HasFactory<\Database\Factories\DocumentChunkFactory> */
+    /** @use HasFactory<DocumentChunkFactory> */
     use HasFactory;
 
     protected $fillable = [

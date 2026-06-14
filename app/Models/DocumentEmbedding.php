@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\DocumentEmbeddingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read DocumentChunk $chunk
  * @property-read Document $document
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentEmbedding newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentEmbedding newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentEmbedding query()
@@ -25,12 +27,13 @@ use Illuminate\Support\Carbon;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentEmbedding whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentEmbedding whereModel($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|DocumentEmbedding whereUpdatedAt($value)
- * @mixin \Illuminate\Database\Eloquent\Model
+ *
+ * @mixin Model
  * @mixin IdeHelperDocumentEmbedding
  */
 class DocumentEmbedding extends Model
 {
-    /** @use HasFactory<\Database\Factories\DocumentEmbeddingFactory> */
+    /** @use HasFactory<DocumentEmbeddingFactory> */
     use HasFactory;
 
     protected $fillable = [
