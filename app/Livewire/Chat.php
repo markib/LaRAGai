@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\DTO\RetrievalResult;
 use App\Repositories\ConversationRepository;
 use App\Services\RagService;
 use Illuminate\Contracts\View\View;
@@ -37,6 +38,7 @@ class Chat extends Component
     {
         $this->bootServices();
         $this->sessionId ??= (string) Str::uuid();
+        $this->retrievedDocuments = [];
         $this->loadMessages();
     }
 
@@ -44,6 +46,11 @@ class Chat extends Component
     {
         $this->bootServices();
     }
+
+    // public function updatedRetrievedDocuments(mixed $value): void
+    // {
+    //     $this->retrievedDocuments = $this->normalizeRetrievedDocuments(is_array($value) ? $value : []);
+    // }
 
     protected function bootServices(): void
     {
@@ -98,7 +105,7 @@ class Chat extends Component
 
             /** @var array<int, mixed> $docs */
             $docs = $result['documents'] ?? [];
-            $this->retrievedDocuments = $docs;
+            $this->retrievedDocuments = $this->normalizeRetrievedDocuments($docs);
 
             $this->stream(
                 to: 'answer',
@@ -173,6 +180,36 @@ class Chat extends Component
     {
         return view('livewire.chat', [
             'messages' => $this->messageList(),
+            'retrievedDocuments' => $this->retrievedDocuments,
         ]);
+    }
+
+    /**
+     * @param array<int, mixed> $documents
+     * @return array<int, array<string, mixed>>
+     */
+    protected function normalizeRetrievedDocuments(array $documents): array
+    {
+        return array_map(function (mixed $document): array {
+            if ($document instanceof RetrievalResult) {
+                return [
+                    'id' => $document->id,
+                    'documentId' => $document->documentId,
+                    'chunkId' => $document->chunkId,
+                    'chunkIndex' => $document->chunkIndex,
+                    'score' => $document->score,
+                    'filename' => $document->originalFilename ?? $document->filename ?? $document->source ?? 'Unknown',
+                    'original_filename' => $document->originalFilename ?? $document->filename ?? $document->source ?? 'Unknown',
+                    'payload' => ['text' => $document->content],
+                    'content' => $document->content,
+                ];
+            }
+
+            if (is_array($document)) {
+                return $document;
+            }
+
+            return [];
+        }, $documents);
     }
 }
