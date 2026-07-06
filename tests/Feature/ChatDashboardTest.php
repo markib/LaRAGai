@@ -3,10 +3,11 @@
 use App\DTO\RetrievalResult;
 use App\Livewire\Chat;
 use Livewire\Livewire;
+use Tests\TestCase;
 
 describe('chat dashboard', function () {
     it('renders the redesigned chat workspace', function () {
-        /** @var \Tests\TestCase $this */
+        /** @var TestCase $this */
         $response = $this->get('/chat');
 
         $response->assertStatus(200);

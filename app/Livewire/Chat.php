@@ -185,7 +185,7 @@ class Chat extends Component
     }
 
     /**
-     * @param array<int, mixed> $documents
+     * @param  array<int, mixed>                $documents
      * @return array<int, array<string, mixed>>
      */
     protected function normalizeRetrievedDocuments(array $documents): array

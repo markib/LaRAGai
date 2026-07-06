@@ -35,6 +35,7 @@ This repository contains a full-stack Laravel + React project designed for local
 5. Run `php artisan migrate`.
 6. Run `npm run dev`.
 7. Run `php artisan serve`.
+8. Run './vendor/bin/pint'
 
 ## Notes
 
