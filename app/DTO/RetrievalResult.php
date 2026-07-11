@@ -24,15 +24,15 @@ final readonly class RetrievalResult implements Wireable
     public function toLivewire(): array
     {
         return [
-            'id'               => $this->id,
-            'documentId'       => $this->documentId,
-            'chunkId'          => $this->chunkId,
-            'chunkIndex'       => $this->chunkIndex,
-            'content'          => $this->content,
-            'score'            => $this->score,
-            'filename'         => $this->filename,
+            'id' => $this->id,
+            'documentId' => $this->documentId,
+            'chunkId' => $this->chunkId,
+            'chunkIndex' => $this->chunkIndex,
+            'content' => $this->content,
+            'score' => $this->score,
+            'filename' => $this->filename,
             'originalFilename' => $this->originalFilename,
-            'source'           => $this->source,
+            'source' => $this->source,
         ];
     }
 
@@ -41,7 +41,7 @@ final readonly class RetrievalResult implements Wireable
      */
     public static function fromLivewire($value): static
     {
-        return new static(
+        return new self(
             $value['id'],
             $value['documentId'],
             $value['chunkId'],

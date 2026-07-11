@@ -214,7 +214,7 @@ class Chat extends Component
     /**
      * Normalize documents whether they come as RetrievalResult objects or arrays
      *
-     * @param  array<int, RetrievalResult|array<string, mixed>>  $documents
+     * @param  array<int, RetrievalResult|array<string, mixed>> $documents
      * @return array<int, array<string, mixed>>
      */
     protected function normalizeRetrievedDocuments(array $documents): array
