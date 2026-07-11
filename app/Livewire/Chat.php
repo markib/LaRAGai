@@ -34,7 +34,10 @@ class Chat extends Component
 
     protected ConversationRepository $conversationRepository;
 
-    public array|RetrievalResult $retrievalResults = [];
+    /**
+     * @var array<int, RetrievalResult|array<string, mixed>>
+     */
+    public array $retrievalResults = [];
 
     public function mount(): void
     {
@@ -74,7 +77,7 @@ class Chat extends Component
     }
 
     /**
-     * Load initial retrieval results (used by test + initial render)
+     * @return array<int, RetrievalResult|array<string, mixed>>
      */
     protected function loadRetrievalResults(): array
     {
@@ -209,7 +212,9 @@ class Chat extends Component
     }
 
     /**
-     * @param  array<int, mixed>                $documents
+     * Normalize documents whether they come as RetrievalResult objects or arrays
+     *
+     * @param  array<int, RetrievalResult|array<string, mixed>>  $documents
      * @return array<int, array<string, mixed>>
      */
     protected function normalizeRetrievedDocuments(array $documents): array
@@ -223,6 +228,7 @@ class Chat extends Component
                 return $document;
             }
 
+            // Fallback for unexpected types
             return (array) $document;
         }, $documents);
     }

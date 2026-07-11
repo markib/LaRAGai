@@ -18,33 +18,39 @@ final readonly class RetrievalResult implements Wireable
         public ?string $source = null,
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toLivewire(): array
     {
         return [
-            'id' => $this->id,
-            'documentId' => $this->documentId,
-            'chunkId' => $this->chunkId,
-            'chunkIndex' => $this->chunkIndex,
-            'content' => $this->content,
-            'score' => $this->score,
-            'filename' => $this->filename,
+            'id'               => $this->id,
+            'documentId'       => $this->documentId,
+            'chunkId'          => $this->chunkId,
+            'chunkIndex'       => $this->chunkIndex,
+            'content'          => $this->content,
+            'score'            => $this->score,
+            'filename'         => $this->filename,
             'originalFilename' => $this->originalFilename,
-            'source' => $this->source,
+            'source'           => $this->source,
         ];
     }
 
+    /**
+     * @param array<string, mixed> $value
+     */
     public static function fromLivewire($value): static
     {
-        return new self(
+        return new static(
             $value['id'],
             $value['documentId'],
             $value['chunkId'],
             $value['chunkIndex'],
             $value['content'],
             $value['score'],
-            $value['filename'],
-            $value['originalFilename'],
-            $value['source']
+            $value['filename'] ?? null,
+            $value['originalFilename'] ?? null,
+            $value['source'] ?? null,
         );
     }
 }
