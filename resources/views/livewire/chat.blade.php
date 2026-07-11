@@ -146,16 +146,21 @@
                             <span class="text-xs text-zinc-500">{{ count($retrievedDocuments) }} items</span>
                         </div>
                         <div class="mt-3 space-y-3">
-                            @foreach ($retrievedDocuments as $doc)
+                            @foreach($retrievedDocuments as $doc)
+                            @php
+                            $doc = (array) $doc; // ensure it's an array
+                            @endphp
                             <div class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3">
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-sm font-medium text-zinc-800">
-                                        {{ $doc['originalFilename'] ?? $doc['filename'] ?? 'Unknown' }}
+                                        {{ $doc['originalFilename'] ?? $doc['original_filename'] ?? $doc['filename'] ?? 'Unknown' }}
                                     </p>
-                                    <span class="text-xs text-zinc-500"> Score {{ round($doc['score'], 3) }}</span>
+                                    <span class="text-xs text-zinc-500">
+                                        Score {{ round($doc['score'] ?? 0, 3) }}
+                                    </span>
                                 </div>
                                 <p class="mt-2 text-sm leading-6 text-zinc-600">
-                                    {{ substr($doc->payload['text'] ?? $doc->content ?? '', 0, 180) }}...
+                                    {{ substr($doc['content'] ?? $doc['payload']['text'] ?? '', 0, 200) }}...
                                 </p>
                             </div>
                             @endforeach

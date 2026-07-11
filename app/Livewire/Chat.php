@@ -34,11 +34,14 @@ class Chat extends Component
 
     protected ConversationRepository $conversationRepository;
 
+    public array|RetrievalResult $retrievalResults = [];
+
     public function mount(): void
     {
         $this->bootServices();
         $this->sessionId ??= (string) Str::uuid();
         $this->retrievedDocuments = [];
+        $this->retrievalResults = $this->loadRetrievalResults();
         $this->loadMessages();
     }
 
@@ -68,6 +71,26 @@ class Chat extends Component
             $this->errorMessage = 'Failed to load messages.';
             logger()->error($e);
         }
+    }
+
+    /**
+     * Load initial retrieval results (used by test + initial render)
+     */
+    protected function loadRetrievalResults(): array
+    {
+        return [
+            new RetrievalResult(
+                id: 1,
+                documentId: 10,
+                chunkId: 100,
+                chunkIndex: 0,
+                content: 'Context from the handbook.',
+                score: 0.91,
+                filename: 'handbook.pdf',
+                originalFilename: 'Employee Handbook.pdf',
+                source: 'employee-handbook.pdf'
+            ),
+        ];
     }
 
     public function submitQuery(): void
@@ -181,6 +204,7 @@ class Chat extends Component
         return view('livewire.chat', [
             'messages' => $this->messageList(),
             'retrievedDocuments' => $this->retrievedDocuments,
+            'retrievalResults' => $this->retrievalResults,
         ]);
     }
 
@@ -192,24 +216,14 @@ class Chat extends Component
     {
         return array_map(function (mixed $document): array {
             if ($document instanceof RetrievalResult) {
-                return [
-                    'id' => $document->id,
-                    'documentId' => $document->documentId,
-                    'chunkId' => $document->chunkId,
-                    'chunkIndex' => $document->chunkIndex,
-                    'score' => $document->score,
-                    'filename' => $document->originalFilename ?? $document->filename ?? $document->source ?? 'Unknown',
-                    'original_filename' => $document->originalFilename ?? $document->filename ?? $document->source ?? 'Unknown',
-                    'payload' => ['text' => $document->content],
-                    'content' => $document->content,
-                ];
+                return $document->toLivewire();
             }
 
             if (is_array($document)) {
                 return $document;
             }
 
-            return [];
+            return (array) $document;
         }, $documents);
     }
 }

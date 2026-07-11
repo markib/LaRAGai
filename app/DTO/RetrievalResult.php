@@ -2,7 +2,9 @@
 
 namespace App\DTO;
 
-final readonly class RetrievalResult
+use Livewire\Wireable;
+
+final readonly class RetrievalResult implements Wireable
 {
     public function __construct(
         public int $id,
@@ -15,4 +17,34 @@ final readonly class RetrievalResult
         public ?string $originalFilename = null,
         public ?string $source = null,
     ) {}
+
+    public function toLivewire(): array
+    {
+        return [
+            'id' => $this->id,
+            'documentId' => $this->documentId,
+            'chunkId' => $this->chunkId,
+            'chunkIndex' => $this->chunkIndex,
+            'content' => $this->content,
+            'score' => $this->score,
+            'filename' => $this->filename,
+            'originalFilename' => $this->originalFilename,
+            'source' => $this->source,
+        ];
+    }
+
+    public static function fromLivewire($value): static
+    {
+        return new self(
+            $value['id'],
+            $value['documentId'],
+            $value['chunkId'],
+            $value['chunkIndex'],
+            $value['content'],
+            $value['score'],
+            $value['filename'],
+            $value['originalFilename'],
+            $value['source']
+        );
+    }
 }
