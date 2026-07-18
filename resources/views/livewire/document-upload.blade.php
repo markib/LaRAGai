@@ -1,4 +1,4 @@
-<div class="space-y-4 rounded-3xl border border-zinc-200/70 bg-white/80 p-4 shadow-sm backdrop-blur" wire:poll.5s="refreshUploadStatus">
+<div class="space-y-4 rounded-3xl border border-zinc-200/70 bg-white/80 p-4 shadow-sm backdrop-blur">
     <div class="flex items-center justify-between">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-500">Knowledge</p>
@@ -11,21 +11,34 @@
         <label for="file-input" class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 px-4 py-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50">
             <span class="text-2xl">📄</span>
             <span class="mt-2 text-sm font-medium text-zinc-700">
-                @if ($file)
-                {{ $file->getClientOriginalName() }}
+                @if (count($file) > 0)
+                {{ count($file) }} file(s) selected
+                @if (count($file) === 1)
+                <span class="block text-xs text-zinc-500 mt-1 truncate max-w-[280px]">
+                    {{ $file[0]->getClientOriginalName() }}
+                </span>
+                @endif
                 @else
-                Drag or click to upload
+                Drag or click to upload multiple files
                 @endif
             </span>
             <span class="mt-1 text-xs text-zinc-500">Supports TXT, PDF, DOCX and Markdown files</span>
         </label>
-        <input type="file" wire:model="file" accept=".txt,.pdf,.doc,.docx,.md" class="hidden" {{ $isUploading ? 'disabled' : '' }} id="file-input" />
+        <!-- Multiple file input -->
+        <input
+            type="file"
+            wire:model="file"
+            accept=".txt,.pdf,.doc,.docx,.md"
+            class="hidden"
+            id="file-input"
+            multiple
+            {{ $isUploading ? 'disabled' : '' }} />
 
-        <button type="submit" class="w-full rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-700" {{ $isUploading || !$file ? 'disabled' : '' }}>
+        <button type="submit" class="w-full rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-700" {{ $isUploading || count($file) === 0 ? 'disabled' : '' }}>
             @if ($isUploading)
-            <span class="inline-flex items-center gap-2"><span class="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white"></span> Processing...</span>
+            <span class="inline-flex items-center gap-2"><span class="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white"></span> Processing {{ count($file) }} files(s)...</span>
             @else
-            Upload document
+            Upload {{ count($file) > 1 ? count($file) . ' files' : 'document' }}
             @endif
         </button>
 
@@ -50,8 +63,7 @@
             <div class="mt-3 h-2 overflow-hidden rounded-full bg-zinc-200">
                 <div
                     @class(['h-2 rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 transition-all duration-500'])
-                    @style(["width: {{ $uploadProgress }}%"])
-                ></div>
+                    @style(["width: {{ $uploadProgress }}%"])></div>
             </div>
             <div class="mt-3 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-500">
                 <div class="flex items-center justify-between">

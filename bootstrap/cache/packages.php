@@ -17,6 +17,21 @@
       0 => 'Cloudstudio\\Ollama\\OllamaServiceProvider',
     ),
   ),
+  'laravel/breeze' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Laravel\\Breeze\\BreezeServiceProvider',
+    ),
+  ),
+  'laravel/reverb' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Laravel\\Reverb\\ApplicationManagerServiceProvider',
+      1 => 'Laravel\\Reverb\\ReverbServiceProvider',
+    ),
+  ),
   'laravel/tinker' => 
   array (
     'providers' => 
@@ -33,6 +48,13 @@
     'providers' => 
     array (
       0 => 'Livewire\\LivewireServiceProvider',
+    ),
+  ),
+  'livewire/volt' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Livewire\\Volt\\VoltServiceProvider',
     ),
   ),
   'nesbot/carbon' => 

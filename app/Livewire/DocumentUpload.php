@@ -15,7 +15,8 @@ class DocumentUpload extends Component
 {
     use WithFileUploads;
 
-    public ?TemporaryUploadedFile $file = null;
+    /** @var array<TemporaryUploadedFile> */
+    public array $file = [];
 
     public bool $isUploading = false;
 
@@ -59,7 +60,7 @@ class DocumentUpload extends Component
         /** @var Collection<int, Document> $documents */
         $documents = Document::query()
             ->latest()
-            ->limit(10)
+            ->limit(3)
             ->get();
 
         $this->uploadedDocuments = $documents->map(fn (Document $doc) => [
@@ -77,7 +78,7 @@ class DocumentUpload extends Component
         }
 
         $this->validate([
-            'file' => 'file|max:10240|mimes:txt,pdf,doc,docx,md',
+            'file.*' => 'file|max:10240|mimes:txt,pdf,doc,docx,md',
         ]);
 
         $this->resetUploadProgress();
@@ -99,16 +100,19 @@ class DocumentUpload extends Component
         $this->uploadFinishedAt = null;
         $this->uploadStatus = 'Preparing upload...';
         $this->resetUploadProgress();
+        $successCount = 0;
+        $totalFiles = count($this->file);
 
         try {
             $this->validate([
-                'file' => 'required|file|max:10240|mimes:txt,pdf,doc,docx,md',
+                'file.*' => 'required|file|max:10240|mimes:txt,pdf,doc,docx,md',
             ]);
+            foreach ($this->file as $index => $file) {
+                $fileNumber = $index + 1;
+                $this->setUploadProgress("Uploading file {$fileNumber}/{$totalFiles}", 20, 1);
+                usleep(100000);
 
-            $this->setUploadProgress('Uploading file', 20, 1);
-            usleep(150000);
-
-            $originalName = $this->file->getClientOriginalName();
+            $originalName = $file->getClientOriginalName();
 
             $safeName = now()->timestamp.'_'.preg_replace(
                 '/[^A-Za-z0-9_\-\.]/',
@@ -116,16 +120,16 @@ class DocumentUpload extends Component
                 $originalName
             );
 
-            $realPath = $this->file->getRealPath();
+            $realPath = $file->getRealPath();
             $size = ($realPath && file_exists($realPath))
                 ? filesize($realPath)
                 : 0;
 
-            $mimeType = $this->file->getMimeType();
+            $mimeType = $file->getMimeType();
 
-            $storedName = Str::uuid().'.'.$this->file->extension();
+            $storedName = Str::uuid().'.'.$file->extension();
 
-            $path = $this->file->storeAs('documents', $safeName, 'local');
+            $path = $file->storeAs('documents', $safeName, 'local');
 
             $this->setUploadProgress('Parsing document', 45, 2);
             usleep(150000);
@@ -142,17 +146,20 @@ class DocumentUpload extends Component
                 'status' => 'uploaded',
             ]);
 
-            $this->setUploadProgress('Chunking content', 65, 3);
-            usleep(150000);
-
-            $this->setUploadProgress('Embedding vectors', 82, 4);
-            usleep(150000);
+                $this->setUploadProgress("Chunking & embedding {$fileNumber}/{$totalFiles}", 65, 3);
+                usleep(100000);
 
             IndexDocumentJob::dispatch($document->id);
 
+                $successCount++;
+            
+            
             $this->activeDocumentId = $document->id;
-            $this->setUploadProgress('Queued for indexing', 35, 5);
-            $this->uploadStatus = "✅ '{$originalName}' uploaded successfully! Queueing indexing...";
+
+                $this->setUploadProgress("Queued for indexing {$fileNumber}/{$totalFiles}", 85, 4);
+            }
+            $this->setUploadProgress('All files processed successfully', 100, 5);
+            $this->uploadStatus = "✅ {$successCount} of {$totalFiles} file(s) uploaded successfully! Indexing queued.";
 
             $this->reset('file');
 
@@ -230,6 +237,7 @@ class DocumentUpload extends Component
         $this->uploadProgress = 0;
         $this->uploadStartedAt = now()->toIso8601String();
         $this->uploadFinishedAt = null;
+
         $this->uploadSteps = [
             ['label' => 'Queued', 'state' => 'pending'],
             ['label' => 'Uploading', 'state' => 'pending'],
@@ -240,23 +248,24 @@ class DocumentUpload extends Component
         ];
     }
 
-    protected function setUploadProgress(string $stage, int $progress, int $activeStep): void
+    protected function setUploadProgress(string $stage, int $progress, int $activeStep = 0): void
     {
         $this->uploadStage = $stage;
         $this->uploadProgress = $progress;
+
+        // For multi-file, we show overall progress
         $this->uploadSteps = array_map(function (array $step, int $index) use ($activeStep): array {
-            if ($index < $activeStep) {
+            if ($index < $activeStep - 1) {
                 $state = 'done';
-            } elseif ($index === $activeStep) {
+            } elseif ($index === $activeStep - 1) {
                 $state = 'active';
             } else {
                 $state = 'pending';
             }
-
             return ['label' => $step['label'], 'state' => $state];
         }, $this->uploadSteps, array_keys($this->uploadSteps));
     }
-
+    
     public function render(): View
     {
         return view('livewire.document-upload', [

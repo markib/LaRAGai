@@ -4,6 +4,7 @@ namespace App\Services\Providers;
 
 use App\DTO\Bm25Result;
 use App\DTO\RetrievalResult;
+use App\Events\RetrievalProgressUpdated;
 use App\Models\DocumentChunk;
 use App\Repositories\DocumentRepository;
 use App\Repositories\VectorRepositoryInterface;
@@ -23,23 +24,32 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
     /**
      * @return array<int, RetrievalResult>
      */
-    public function search(string $query, int $limit = 5): array
+    public function search(string $query, int $limit = 5,?callable $progressCallback = null,?string $sessionId = null): array
     {
+        // 1. Pass $sessionId as the 4th argument to trigger Reverb broadcasts
+        $this->notifyProgress($progressCallback, 'Searching embeddings', 25, $sessionId);
         $queryEmbedding = $this->embedder->embed($query);
 
         // Vector search
+        $this->notifyProgress($progressCallback, 'Searching embeddings', 100, $sessionId); // Complete previous visual block
+        $this->notifyProgress($progressCallback, 'Searching BM25', 25, $sessionId); // Move to BM25 tracking
+
         $vectorResults = $this->vectors->search(
             $queryEmbedding,
             $limit * 4
         );
 
         // BM25 search
+        $this->notifyProgress($progressCallback, 'Searching BM25', 100, $sessionId);
+        $this->notifyProgress($progressCallback, 'Hybrid ranking', 25, $sessionId);
+
         $bm25Results = $this->bm25Retriever->search(
             $query,
             $limit * 4
         );
 
         // Hybrid merge
+        $this->notifyProgress($progressCallback, 'Hybrid ranking', 100, $sessionId);
         $matches = $this->reciprocalRankFusion(
             $vectorResults,
             $bm25Results,
@@ -47,10 +57,16 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
         );
 
         if (empty($matches)) {
+            $this->notifyProgress($progressCallback, 'Generating answer', 0, $sessionId);
             return [];
         }
 
-        return $this->hydrateChunks($matches);
+        $result = $this->hydrateChunks($matches);
+
+        // Hand off control to the LLM generation phase
+        $this->notifyProgress($progressCallback, 'Generating answer', 20, $sessionId);
+
+        return $result;
     }
 
     /**
@@ -151,5 +167,25 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
         }
 
         return $results;
+    }
+
+    private function notifyProgress(
+        ?callable $callback,
+        string $label,
+        int $percent,
+        ?string $sessionId = null,
+    ): void {
+
+        if ($callback) {
+            $callback($label, $percent);
+        }
+
+        if ($sessionId) {
+            broadcast(new RetrievalProgressUpdated(
+                sessionId: $sessionId,
+                label: $label,
+                percent: $percent,
+            ));
+        }
     }
 }

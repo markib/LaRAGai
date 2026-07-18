@@ -24,6 +24,7 @@ class TestCommand extends Command
             'QUEUE_CONNECTION' => 'sync',
             'SESSION_DRIVER' => 'array',
             'RAG_VECTOR_STORE' => 'local',
+            'BROADCAST_CONNECTION' => 'null',
         ]);
         $process->setTimeout(null);
         $process->run(function ($type, $buffer): void {

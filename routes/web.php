@@ -2,11 +2,18 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Chat Dashboard
-Route::get('/', function () {
-    return redirect()->route('chat.dashboard');
-})->name('home');
+Route::view('/', 'welcome');
 
-Route::get('/chat', function () {
-    return view('chat-dashboard');
-})->name('chat.dashboard');
+Route::view('dashboard', 'dashboard')
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
+
+Route::view('profile', 'profile')
+    ->middleware(['auth'])
+    ->name('profile');
+
+Route::view('chat', 'chat-dashboard')
+    ->middleware(['auth', 'verified'])
+    ->name('chat');
+
+require __DIR__.'/auth.php';

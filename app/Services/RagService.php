@@ -124,9 +124,9 @@ class RagService
     /**
      * @return array<int, RetrievalResult>
      */
-    public function retrieve(string $query, int $limit = 5): array
+    public function retrieve(string $query, int $limit = 5, ?callable $progressCallback = null, ?string $sessionId = null): array
     {
-        return $this->retriever->search($query, $limit);
+        return $this->retriever->search($query, $limit, $progressCallback, $sessionId);
     }
 
     /*
@@ -136,15 +136,31 @@ class RagService
      */
 
     /**
+     * @param callable(string,int):void|null $progressCallback
      * @return array{
      *     answer:string,
      *     documents:array<int, RetrievalResult>,
      *     session_id:string|null
      * }
      */
-    public function answer(string $query, ?string $sessionId = null, int $limit = 5): array
+    public function answer(string $query, ?string $sessionId = null, int $limit = 5, ?callable $progressCallback = null): array
     {
-        $results = $this->retrieve($query, $limit);
+        $results = $this->retrieve(
+            $query,
+            $limit,
+            function (string $label, int $percent) use ($sessionId, $progressCallback): void {
+
+                // logger()->info('RAG RETRIEVAL PROGRESS', [
+                //     'session_id' => $sessionId,
+                //     'label' => $label,
+                //     'percent' => $percent,
+                // ]);
+
+                if ($progressCallback !== null) {
+                    $progressCallback($label, $percent);
+                }
+            }
+        );
 
         if (empty($results)) {
             return [
@@ -167,6 +183,7 @@ class RagService
             'answer' => $answer,
             'documents' => $results,
             'session_id' => $sessionId,
+            'progressCallback' => $progressCallback,
         ];
     }
 

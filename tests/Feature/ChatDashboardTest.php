@@ -2,13 +2,20 @@
 
 use App\DTO\RetrievalResult;
 use App\Livewire\Chat;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 describe('chat dashboard', function () {
     it('renders the redesigned chat workspace', function () {
         /** @var TestCase $this */
-        $response = $this->get('/chat');
+        $user = User::create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $response = $this->actingAs($user)->get('/chat');
 
         $response->assertStatus(200);
         $response->assertSee('AI Assistant Workspace');
