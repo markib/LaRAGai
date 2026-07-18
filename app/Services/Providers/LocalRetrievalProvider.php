@@ -24,7 +24,7 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
     /**
      * @return array<int, RetrievalResult>
      */
-    public function search(string $query, int $limit = 5,?callable $progressCallback = null,?string $sessionId = null): array
+    public function search(string $query, int $limit = 5, ?callable $progressCallback = null, ?string $sessionId = null): array
     {
         // 1. Pass $sessionId as the 4th argument to trigger Reverb broadcasts
         $this->notifyProgress($progressCallback, 'Searching embeddings', 25, $sessionId);
@@ -58,6 +58,7 @@ class LocalRetrievalProvider implements RetrievalProviderInterface
 
         if (empty($matches)) {
             $this->notifyProgress($progressCallback, 'Generating answer', 0, $sessionId);
+
             return [];
         }
 

@@ -148,7 +148,7 @@ class RagService
         $results = $this->retrieve(
             $query,
             $limit,
-            function (string $label, int $percent) use ($sessionId, $progressCallback): void {
+            function (string $label, int $percent) use ($progressCallback): void {
 
                 // logger()->info('RAG RETRIEVAL PROGRESS', [
                 //     'session_id' => $sessionId,

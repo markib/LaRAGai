@@ -31,8 +31,7 @@ describe('Chat::submitQuery', function () {
         $this->mock(RagService::class, function ($mock) {
             $mock->shouldReceive('answer')
                 ->once()
-                ->withArgs(fn ($query, $sessionId, $limit, $progressCallback) =>
-                    $query === 'What is RAG?' && $limit === 5
+                ->withArgs(fn ($query, $sessionId, $limit, $progressCallback) => $query === 'What is RAG?' && $limit === 5
                 )
                 ->andReturn([
                     'answer' => 'Mocked answer.',

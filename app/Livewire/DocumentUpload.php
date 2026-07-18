@@ -112,49 +112,48 @@ class DocumentUpload extends Component
                 $this->setUploadProgress("Uploading file {$fileNumber}/{$totalFiles}", 20, 1);
                 usleep(100000);
 
-            $originalName = $file->getClientOriginalName();
+                $originalName = $file->getClientOriginalName();
 
-            $safeName = now()->timestamp.'_'.preg_replace(
-                '/[^A-Za-z0-9_\-\.]/',
-                '_',
-                $originalName
-            );
+                $safeName = now()->timestamp.'_'.preg_replace(
+                    '/[^A-Za-z0-9_\-\.]/',
+                    '_',
+                    $originalName
+                );
 
-            $realPath = $file->getRealPath();
-            $size = ($realPath && file_exists($realPath))
-                ? filesize($realPath)
-                : 0;
+                $realPath = $file->getRealPath();
+                $size = ($realPath && file_exists($realPath))
+                    ? filesize($realPath)
+                    : 0;
 
-            $mimeType = $file->getMimeType();
+                $mimeType = $file->getMimeType();
 
-            $storedName = Str::uuid().'.'.$file->extension();
+                $storedName = Str::uuid().'.'.$file->extension();
 
-            $path = $file->storeAs('documents', $safeName, 'local');
+                $path = $file->storeAs('documents', $safeName, 'local');
 
-            $this->setUploadProgress('Parsing document', 45, 2);
-            usleep(150000);
+                $this->setUploadProgress('Parsing document', 45, 2);
+                usleep(150000);
 
-            /** @var Document $document */
-            $document = Document::query()->create([
-                'filename' => $storedName,
-                'original_filename' => $originalName,
-                'disk' => 'local',
-                'path' => $path,
-                'size' => $size,
-                'mime_type' => $mimeType,
-                'source' => 'livewire_upload_'.uniqid(),
-                'status' => 'uploaded',
-            ]);
+                /** @var Document $document */
+                $document = Document::query()->create([
+                    'filename' => $storedName,
+                    'original_filename' => $originalName,
+                    'disk' => 'local',
+                    'path' => $path,
+                    'size' => $size,
+                    'mime_type' => $mimeType,
+                    'source' => 'livewire_upload_'.uniqid(),
+                    'status' => 'uploaded',
+                ]);
 
                 $this->setUploadProgress("Chunking & embedding {$fileNumber}/{$totalFiles}", 65, 3);
                 usleep(100000);
 
-            IndexDocumentJob::dispatch($document->id);
+                IndexDocumentJob::dispatch($document->id);
 
                 $successCount++;
-            
-            
-            $this->activeDocumentId = $document->id;
+
+                $this->activeDocumentId = $document->id;
 
                 $this->setUploadProgress("Queued for indexing {$fileNumber}/{$totalFiles}", 85, 4);
             }
@@ -262,10 +261,11 @@ class DocumentUpload extends Component
             } else {
                 $state = 'pending';
             }
+
             return ['label' => $step['label'], 'state' => $state];
         }, $this->uploadSteps, array_keys($this->uploadSteps));
     }
-    
+
     public function render(): View
     {
         return view('livewire.document-upload', [

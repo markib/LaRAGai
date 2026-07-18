@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\DTO\RetrievalResult;
 use App\Events\AnswerGenerated;
 use App\Events\RetrievalProgressUpdated;
 use App\Repositories\ConversationRepository;
@@ -51,9 +52,10 @@ class ProcessRagQuery implements ShouldQueue
             $conversationRepository->appendMessage($this->sessionId, 'assistant', $answer);
 
             $normalizedDocs = array_map(function (mixed $doc): array {
-                if ($doc instanceof \App\DTO\RetrievalResult) {
+                if ($doc instanceof RetrievalResult) {
                     return $doc->toLivewire();
                 }
+
                 return (array) $doc;
             }, $docs);
 

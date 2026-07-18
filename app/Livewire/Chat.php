@@ -22,7 +22,7 @@ class Chat extends Component
      */
     public array $messages = [];
 
-    public string $currentQuery='';
+    public string $currentQuery = '';
 
     /**
      * @var array<int, mixed>
@@ -323,7 +323,6 @@ class Chat extends Component
     {
         return $this->messages;
     }
-
 
     protected function resetRetrievalSteps(): void
     {
