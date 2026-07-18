@@ -96,6 +96,9 @@ jobs:
         run: ./vendor/bin/phpstan analyse
 
       # 5. TEST & AUDIT
+      - name: Build frontend (required before PHP tests for Vite manifest)
+        run: npm run build
+
       - name: Run PHP unit tests
         env:
           DB_CONNECTION: sqlite
@@ -107,9 +110,6 @@ jobs:
 
       - name: NPM dependency audit
         run: npm audit --audit-level=moderate
-
-      - name: Build frontend
-        run: npm run build
 
       - name: Run frontend tests
         run: npm test
