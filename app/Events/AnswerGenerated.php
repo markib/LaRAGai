@@ -34,6 +34,7 @@ class AnswerGenerated implements ShouldBroadcastNow
         return 'answer.generated';
     }
 
+    /** @return array<string, mixed> */
     public function broadcastWith(): array
     {
         return [

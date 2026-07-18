@@ -31,6 +31,7 @@ class RetrievalProgressUpdated implements ShouldBroadcastNow
         return 'retrieval.progress';
     }
 
+    /** @return array<string, mixed> */
     public function broadcastWith(): array
     {
         return [

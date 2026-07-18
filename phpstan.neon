@@ -13,8 +13,12 @@ parameters:
 
     ignoreErrors:
         - '#Call to an undefined static method Cloudstudio\\Ollama\\Facades\\Ollama::model\(\)#'
-       #  FIX: Ignores the phantom "undefined method name()" errors on routes
+        # FIX: Ignores phantom "undefined method" errors on Route/Request/Guard facades
         - '#Call to an undefined method Illuminate\\Routing\\Route::name\(\)#'
+        - '#Call to an undefined method Illuminate\\Routing\\Route::middleware\(\)#'
+        - '#Call to an undefined method Illuminate\\Foundation\\Auth\\EmailVerificationRequest::user\(\)#'
+        - '#Call to an undefined method Illuminate\\Contracts\\Auth\\Guard::logout\(\)#'
+        - '#Call to an undefined method Illuminate\\Http\\Request::ip\(\)#'
         - '#expectsJson#'
 
     scanFiles:
