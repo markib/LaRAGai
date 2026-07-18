@@ -14,6 +14,9 @@ use Tests\TestCase;
 |
 */
 
+require __DIR__.'/Helpers/OllamaMock.php';
+require __DIR__.'/Helpers/VectorAssertions.php';
+
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
