@@ -4,13 +4,33 @@ namespace App\Repositories;
 
 interface VectorRepositoryInterface
 {
-    public function saveEmbedding(int $documentId, array $vector, array $metadata = []): array;
+    /**
+     * Save an embedding vector and its metadata payload.
+     *
+     * @param  array<int, float>    $embedding
+     * @param  array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function saveEmbedding(
+        int $documentId,
+        array $embedding,
+        array $payload = []
+    ): array;
 
-    public function search(array $vector, int $limit = 5): array;
+    /**
+     * Search the vector database for nearest neighbors.
+     *
+     * @param  array<int, float>                                                                     $embedding
+     * @return array<int, array{chunk_id: int|string, document_id?: int|string|null, score?: float}>
+     */
+    public function search(
+        array $embedding,
+        int $limit = 5
+    ): array;
 
-    public function getPoint(int $documentId): ?array;
-
-    public function deletePoint(int $documentId): bool;
+    public function deletePoint(
+        int $pointId
+    ): bool;
 
     public function clearCollection(): bool;
 }

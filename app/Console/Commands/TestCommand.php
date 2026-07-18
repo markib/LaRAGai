@@ -16,14 +16,16 @@ class TestCommand extends Command
         $binary = $this->resolveTestBinary();
         $options = $this->buildOptions();
 
-        $command = PHP_BINARY . ' ' . escapeshellarg($binary) . ' ' . implode(' ', array_map('escapeshellarg', $options));
+        $command = PHP_BINARY.' '.escapeshellarg($binary).' '.implode(' ', array_map('escapeshellarg', $options));
         $process = Process::fromShellCommandline($command, base_path(), [
             'APP_ENV' => 'testing',
             'DB_CONNECTION' => 'sqlite',
             'DB_DATABASE' => base_path('database/testing.sqlite'),
             'QUEUE_CONNECTION' => 'sync',
             'SESSION_DRIVER' => 'array',
+            'CACHE_STORE' => 'array',
             'RAG_VECTOR_STORE' => 'local',
+            'BROADCAST_CONNECTION' => 'null',
         ]);
         $process->setTimeout(null);
         $process->run(function ($type, $buffer): void {
@@ -51,16 +53,19 @@ class TestCommand extends Command
         return '';
     }
 
+    /**
+     * @return array<int, string>
+     */
     protected function buildOptions(): array
     {
         $options = [];
 
         if ($this->option('colors')) {
-            $options[] = '--colors=' . $this->option('colors');
+            $options[] = '--colors='.$this->option('colors');
         }
 
-        if ($this->option('filter')) {
-            $options[] = '--filter=' . $this->option('filter');
+        if ((string) $this->option('filter')) {
+            $options[] = '--filter='.(string) $this->option('filter');
         }
 
         if ($this->option('parallel')) {
@@ -68,7 +73,7 @@ class TestCommand extends Command
         }
 
         if ($this->option('testsuite')) {
-            $options[] = '--testsuite=' . $this->option('testsuite');
+            $options[] = '--testsuite='.$this->option('testsuite');
         }
 
         return $options;

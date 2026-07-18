@@ -11,14 +11,13 @@ jobs:
 
     strategy:
       matrix:
-        php: [8.4]   # Laravel 12 → 8.3 recommended
+        php: [8.4]
         node: [20]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ✅ FIXED VERSION (v2)
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -27,7 +26,7 @@ jobs:
           coverage: none
 
       - name: Setup Node
-        uses: actions/setup-node@v4   # ✅ v5 not stable everywhere
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           cache: "npm"
@@ -41,7 +40,6 @@ jobs:
       - name: Validate Composer metadata
         run: composer validate --no-check-publish
 
-      # ✅ REQUIRED for Laravel
       - name: Copy .env
         run: cp .env.example .env
 
@@ -51,20 +49,60 @@ jobs:
           mkdir -p storage/framework/cache
           mkdir -p storage/framework/sessions
           mkdir -p bootstrap/cache
-          
+
       - name: Generate app key
         run: php artisan key:generate
 
-      # ✅ Use SQLite for CI (fast + no setup)
+      # 1. Syntax check
+      - name: PHP Syntax Check
+        run: find . -path ./vendor -prune -o -type f -name "*.php" -print | xargs -P 4 -n 1 php -l  
+
+      # 2. Code style formatting
+      - name: Check Code Style
+        run: ./vendor/bin/pint --test
+
+      # 3. 🚀 PREPARE DATABASE FIRST (Moved up)
       - name: Prepare SQLite database
         run: |
           mkdir -p database
+          rm -f database/database.sqlite
           touch database/database.sqlite
 
+      # Add this step right here 👇
+      - name: Start Qdrant Vector Database
+        run: |
+          docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant    
+
       - name: Run migrations
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
         run: php artisan migrate --force
 
+      # 4. GENERATE HELPERS & ANALYZE (With DB environment injected)
+      - name: Generate IDE Helpers for PHPStan
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: |
+          php artisan ide-helper:generate
+          php artisan ide-helper:models --nowrite --filename=_ide_helper_models.php --dir="app/Models" --write-mixin -N
+          php artisan ide-helper:meta  
+
+      - name: Static analysis (Larastan)
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: ./vendor/bin/phpstan analyse
+
+      # 5. TEST & AUDIT
+      - name: Build frontend (required before PHP tests for Vite manifest)
+        run: npm run build
+
       - name: Run PHP unit tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
         run: php artisan test --colors=always
 
       - name: Composer dependency audit
@@ -73,13 +111,9 @@ jobs:
       - name: NPM dependency audit
         run: npm audit --audit-level=moderate
 
-      - name: Build frontend
-        run: npm run build
-
       - name: Run frontend tests
         run: npm test
 
-      # ✅ Updated Trivy version
       - name: Filesystem vulnerability scan
         uses: aquasecurity/trivy-action@v0.14.0
         with:

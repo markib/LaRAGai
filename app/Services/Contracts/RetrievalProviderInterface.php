@@ -2,7 +2,12 @@
 
 namespace App\Services\Contracts;
 
+use App\DTO\RetrievalResult;
+
 interface RetrievalProviderInterface
 {
-    public function search(string $query, int $limit = 5): array;
+    /**
+     * @return array<int, RetrievalResult>
+     */
+    public function search(string $query, int $limit = 5, ?callable $progressCallback = null, ?string $sessionId = null): array;
 }

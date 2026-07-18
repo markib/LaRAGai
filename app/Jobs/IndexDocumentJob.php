@@ -20,34 +20,34 @@ class IndexDocumentJob implements ShouldQueue
         RagService $ragService,
         DocumentParser $parser
     ): void {
+        $document = Document::query()->findOrFail($this->documentId);
 
-        $document = Document::findOrFail(
-            $this->documentId
-        );
+        // Prevent duplicate processing
+        if ($document->status === 'processing') {
+            return;
+        }
 
         $document->update([
             'status' => 'processing',
         ]);
 
         try {
-
+            // Parse file → raw text only
             $content = $parser->parse(
                 $document->disk,
                 $document->path,
                 $document->mime_type
             );
 
+            // Delegate ALL RAG logic to service
             $ragService->ingestDocument(
-                source: $document->filename,
-                content: $content,
-                metadata: [
-                    'document_id' => $document->id,
-                    'filename' => $document->filename,
-                ]
+                documentId: $document->id,
+                content: $content
             );
 
             $document->update([
                 'status' => 'indexed',
+                'indexed_at' => now(),
             ]);
         } catch (\Throwable $e) {
 

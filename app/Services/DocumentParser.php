@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Services;
 
 use Illuminate\Support\Facades\Storage;
+use Smalot\PdfParser\Parser;
 
 class DocumentParser
 {
@@ -11,24 +13,20 @@ class DocumentParser
         string $mimeType
     ): string {
 
-        if (!Storage::disk($disk)->exists($path)) {
+        if (! Storage::disk($disk)->exists($path)) {
             throw new \RuntimeException("File not found: {$path}");
         }
         $fullPath = Storage::disk($disk)->path($path);
 
         return match ($mimeType) {
             'text/plain',
-            'text/markdown'
-            =>  $this->parseText($fullPath),
+            'text/markdown' => $this->parseText($fullPath),
 
-            'application/pdf'
-            => $this->parsePdf($fullPath),
+            'application/pdf' => $this->parsePdf($fullPath),
 
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            => $this->parseDocx($fullPath),
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => $this->parseDocx($fullPath),
 
-            default
-            => throw new \RuntimeException(
+            default => throw new \RuntimeException(
                 "Unsupported file type: {$mimeType}"
             ),
         };
@@ -36,7 +34,7 @@ class DocumentParser
 
     protected function parsePdf(string $path): string
     {
-        $parser = new \Smalot\PdfParser\Parser();
+        $parser = new Parser;
 
         return $parser
             ->parseFile($path)
@@ -45,7 +43,7 @@ class DocumentParser
 
     protected function parseDocx(string $path): string
     {
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
 
         if ($zip->open($path) !== true) {
             throw new \RuntimeException("Unable to open DOCX file: {$path}");
@@ -55,12 +53,15 @@ class DocumentParser
         $zip->close();
 
         if (! $xml) {
-            throw new \RuntimeException("Invalid DOCX structure: missing document.xml");
+            throw new \RuntimeException('Invalid DOCX: missing document.xml');
         }
 
-        // Remove XML tags and decode entities
-        $text = strip_tags($xml);
+        // Better XML cleanup (less noisy than strip_tags)
+        $text = preg_replace('/<[^>]+>/', ' ', $xml);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+
+        // Normalize whitespace
+        $text = preg_replace('/\s+/', ' ', $text);
 
         return trim($text);
     }

@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QdrantController;
 use App\Http\Controllers\RagController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('rag')->group(function () {
     Route::post('ingest', [RagController::class, 'ingest']);

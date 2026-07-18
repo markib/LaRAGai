@@ -2,10 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\DocumentChunk;
 use App\Models\Document;
+use App\Models\DocumentChunk;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<DocumentChunk>
+ */
 class DocumentChunkFactory extends Factory
 {
     protected $model = DocumentChunk::class;
@@ -14,14 +17,9 @@ class DocumentChunkFactory extends Factory
     {
         return [
             'document_id' => Document::factory(),
+            'chunk_index' => 0,
             'content' => $this->faker->paragraphs(2, true),
-            'metadata' => [
-                'chunk_index' => $this->faker->numberBetween(0, 10),
-            ],
-            'embedding' => array_map(
-                fn () => $this->faker->randomFloat(8, -1, 1),
-                range(1, 768)
-            ),
+            'token_count' => rand(50, 200),
         ];
     }
 }

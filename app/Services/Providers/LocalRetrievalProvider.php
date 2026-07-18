@@ -2,80 +2,191 @@
 
 namespace App\Services\Providers;
 
+use App\DTO\Bm25Result;
+use App\DTO\RetrievalResult;
+use App\Events\RetrievalProgressUpdated;
 use App\Models\DocumentChunk;
 use App\Repositories\DocumentRepository;
 use App\Repositories\VectorRepositoryInterface;
 use App\Services\Contracts\EmbeddingProviderInterface;
 use App\Services\Contracts\RetrievalProviderInterface;
+use App\Services\Retrieval\PostgresBm25Retriever;
 
 class LocalRetrievalProvider implements RetrievalProviderInterface
 {
     public function __construct(
         protected EmbeddingProviderInterface $embedder,
         protected VectorRepositoryInterface $vectors,
-        protected DocumentRepository $documents
-    ) {
+        protected DocumentRepository $documents,
+        protected PostgresBm25Retriever $bm25Retriever
+    ) {}
+
+    /**
+     * @return array<int, RetrievalResult>
+     */
+    public function search(string $query, int $limit = 5, ?callable $progressCallback = null, ?string $sessionId = null): array
+    {
+        // 1. Pass $sessionId as the 4th argument to trigger Reverb broadcasts
+        $this->notifyProgress($progressCallback, 'Searching embeddings', 25, $sessionId);
+        $queryEmbedding = $this->embedder->embed($query);
+
+        // Vector search
+        $this->notifyProgress($progressCallback, 'Searching embeddings', 100, $sessionId); // Complete previous visual block
+        $this->notifyProgress($progressCallback, 'Searching BM25', 25, $sessionId); // Move to BM25 tracking
+
+        $vectorResults = $this->vectors->search(
+            $queryEmbedding,
+            $limit * 4
+        );
+
+        // BM25 search
+        $this->notifyProgress($progressCallback, 'Searching BM25', 100, $sessionId);
+        $this->notifyProgress($progressCallback, 'Hybrid ranking', 25, $sessionId);
+
+        $bm25Results = $this->bm25Retriever->search(
+            $query,
+            $limit * 4
+        );
+
+        // Hybrid merge
+        $this->notifyProgress($progressCallback, 'Hybrid ranking', 100, $sessionId);
+        $matches = $this->reciprocalRankFusion(
+            $vectorResults,
+            $bm25Results,
+            $limit
+        );
+
+        if (empty($matches)) {
+            $this->notifyProgress($progressCallback, 'Generating answer', 0, $sessionId);
+
+            return [];
+        }
+
+        $result = $this->hydrateChunks($matches);
+
+        // Hand off control to the LLM generation phase
+        $this->notifyProgress($progressCallback, 'Generating answer', 20, $sessionId);
+
+        return $result;
     }
 
-    public function search(string $query, int $limit = 5): array
+    /**
+     * @param  array<int, array{chunk_id?: string|int, document_id?: string|int, score?: float|int}>   $vectorResults
+     * @param  array<int, Bm25Result>                                                                  $bm25Results   <-- FIXED: Pointing directly to your DTO class
+     * @return array<int, array{chunk_id: string|int, document_id: string|int|null, score: float|int}>
+     */
+    protected function reciprocalRankFusion(
+        array $vectorResults,
+        array $bm25Results,
+        int $limit
+    ): array {
+        $scores = [];
+
+        foreach ($vectorResults as $rank => $result) {
+
+            $chunkId = $result['chunk_id'] ?? null;
+
+            if (! $chunkId) {
+                continue;
+            }
+
+            $scores[$chunkId] ??= [
+                'chunk_id' => $chunkId,
+                'document_id' => $result['document_id'] ?? null,
+                'score' => 0,
+            ];
+
+            $scores[$chunkId]['score']
+                += 1 / (60 + $rank + 1);
+        }
+
+        foreach ($bm25Results as $rank => $result) {
+
+            $chunkId = $result->id;
+
+            $scores[$chunkId] ??= [
+                'chunk_id' => $chunkId,
+                'document_id' => $result->documentId,
+                'score' => 0,
+            ];
+
+            $scores[$chunkId]['score']
+                += 1 / (60 + $rank + 1);
+        }
+
+        uasort(
+            $scores,
+            fn ($a, $b) => $b['score'] <=> $a['score']
+        );
+
+        return array_slice(
+            array_values($scores),
+            0,
+            $limit
+        );
+    }
+
+    /**
+     * @param  array<int, array{chunk_id: string|int, document_id?: string|int|null, score: float|int}> $matches
+     * @return array<int, RetrievalResult>
+     */
+    protected function hydrateChunks(array $matches): array
     {
-        $queryEmbedding = $this->embedder->embed($query);
-        $matches = $this->vectors->search($queryEmbedding, $limit);
+        $chunkIds = array_column(
+            $matches,
+            'chunk_id'
+        );
 
-        if (empty($matches)) {
-            return [];
-        }
+        $chunks = DocumentChunk::with('document')
+            ->whereIn('id', $chunkIds)
+            ->get()
+            ->keyBy('id');
 
-        $minScore = config('rag.retrieval.min_score', 0.0);
-        $matches = array_filter($matches, fn ($match) => isset($match['score']) && (float) $match['score'] >= $minScore);
+        $results = [];
 
-        if (empty($matches)) {
-            return [];
-        }
+        foreach ($matches as $match) {
 
-        $chunkIds = array_unique(array_values(array_filter(array_column($matches, 'chunk_id'))));
+            $chunkId = $match['chunk_id'];
 
-        if (! empty($chunkIds)) {
-            $chunks = DocumentChunk::whereIn('id', $chunkIds)
-                ->get()
-                ->keyBy('id');
-
-            $results = [];
-
-            foreach ($matches as $match) {
-                if (empty($match['chunk_id']) || ! $chunks->has($match['chunk_id'])) {
-                    continue;
-                }
-
-                $chunk = $chunks->get($match['chunk_id']);
-
-                $results[] = [
-                    'id' => $chunk->id,
-                    'document_id' => $chunk->document_id,
-                    'chunk_id' => $chunk->id,
-                    'chunk_index' => $match['chunk_index'] ?? $chunk->metadata['chunk_index'] ?? null,
-                    'source' => $match['source'] ?? $chunk->metadata['source'] ?? null,
-                    'content' => $chunk->content,
-                    'score' => (float) ($match['score'] ?? 0.0),
-                    'metadata' => $chunk->metadata,
-                ];
+            if (! $chunks->has($chunkId)) {
+                continue;
             }
 
-            if (! empty($results)) {
-                return $results;
-            }
+            $chunk = $chunks[$chunkId];
+
+            $results[] = new RetrievalResult(
+                id: $chunk->id,
+                documentId: $chunk->document_id,
+                chunkId: $chunk->id,
+                chunkIndex: $chunk->chunk_index,
+                content: $chunk->content,
+                score: $match['score'],
+                filename: $chunk->document?->filename,
+                originalFilename: $chunk->document?->original_filename,
+                source: $chunk->document?->source,
+            );
         }
 
-        $documentIds = array_unique(array_values(array_filter(array_column($matches, 'document_id'))));
-        $documents = $this->documents->findByIds($documentIds);
+        return $results;
+    }
 
-        return collect($documents)
-            ->map(function ($document, $index) use ($matches) {
-                $match = $matches[$index] ?? [];
-                $document['score'] = isset($match['score']) ? (float) $match['score'] : 0.0;
+    private function notifyProgress(
+        ?callable $callback,
+        string $label,
+        int $percent,
+        ?string $sessionId = null,
+    ): void {
 
-                return $document;
-            })
-            ->toArray();
+        if ($callback) {
+            $callback($label, $percent);
+        }
+
+        if ($sessionId) {
+            broadcast(new RetrievalProgressUpdated(
+                sessionId: $sessionId,
+                label: $label,
+                percent: $percent,
+            ));
+        }
     }
 }

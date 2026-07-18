@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\DTO\IngestResult;
+use App\DTO\RetrievalResult;
+use App\Models\Document;
 use App\Models\DocumentChunk;
-use App\Repositories\ConversationRepository;
-use App\Repositories\DocumentRepository;
-use App\Repositories\VectorRepositoryInterface;
+use App\Models\DocumentEmbedding;
+use App\Repositories\QdrantVectorRepository;
 use App\Services\Contracts\EmbeddingProviderInterface;
 use App\Services\Contracts\GenerationProviderInterface;
 use App\Services\Contracts\RetrievalProviderInterface;
@@ -17,77 +19,150 @@ class RagService
         protected EmbeddingProviderInterface $embedder,
         protected RetrievalProviderInterface $retriever,
         protected GenerationProviderInterface $generator,
-        protected DocumentRepository $documents,
-        protected VectorRepositoryInterface $vectors,
-        protected ConversationRepository $conversations
+        protected QdrantVectorRepository $vectors,
     ) {}
 
-    /**
-     * =========================
-     * INGESTION PIPELINE
-     * =========================
-     */
-    public function ingestDocument(
-        string $source,
-        string $content,
-        array $metadata = []
-    ): array {
-        $document = $this->documents->createOrUpdate($source, $content, $metadata);
+    /*
+    |--------------------------------------------------------------------------
+    | INGESTION PIPELINE
+    |--------------------------------------------------------------------------
+    */
 
-        $chunks = $this->chunkContent($content);
-
-        foreach ($chunks as $index => $chunkText) {
-            $embedding = $this->embedder->embed($chunkText);
-
-            $chunk = DocumentChunk::create([
-                'document_id' => $document['id'],
-                'content' => $chunkText,
-                'metadata' => array_merge($metadata, [
-                    'chunk_index' => $index,
-                    'source' => $source,
-                ]),
-                'embedding' => $embedding,
-            ]);
-
-            $this->vectors->saveEmbedding(
-                $document['id'],
-                $embedding,
-                [
-                    'source' => $source,
-                    'document_id' => $document['id'],
-                    'chunk_id' => $chunk->id,
-                    'chunk_index' => $index,
-                ]
-            );
-        }
-
-        return $document;
-    }
-
-    /**
-     * =========================
-     * RETRIEVAL
-     * =========================
-     */
-    public function retrieve(string $query, int $limit = 5): array
+    public function ingestDocument(int $documentId, string $content): IngestResult
     {
-        return $this->retriever->search($query, $limit);
+        logger()->info('RAG INGEST START', [
+            'document_id' => $documentId,
+            'content_length' => strlen($content),
+        ]);
+
+        /** @var Document $document */
+        $document = Document::query()->findOrFail($documentId);
+
+        // Prevent duplicate ingestion in concurrent jobs
+        // if ($document->status === 'processing') {
+        //     return [
+        //         'document_id' => $document->id,
+        //         'skipped' => true,
+        //         'reason' => 'already_processing',
+        //     ];
+        // }
+
+        $document->markAsProcessing();
+
+        try {
+            $chunks = $this->chunkContent($content);
+            logger()->info('RAG CHUNKS GENERATED', [
+                'count' => count($chunks),
+            ]);
+            foreach ($chunks as $index => $chunkText) {
+
+                logger()->info('CREATING CHUNK', [
+                    'index' => $index,
+                ]);
+                // 1. Create chunk
+                /** @var DocumentChunk $chunk */
+                $chunk = DocumentChunk::query()->create([
+                    'document_id' => $document->id,
+                    'chunk_index' => $index,
+                    'content' => $chunkText,
+                    'token_count' => Str::length($chunkText),
+                ]);
+
+                logger()->info('CHUNK CREATED', [
+                    'id' => $chunk->id,
+                ]);
+
+                // 2. Generate embedding
+                $embedding = $this->embedder->embed($chunkText);
+                logger()->info('EMBEDDING GENERATED');
+
+                /** @var int $documentId */
+                $documentId = $document->id;
+
+                // 3. Store embedding (DB optional)
+                DocumentEmbedding::query()->create([
+                    'document_id' => $documentId,
+                    'chunk_id' => $chunk->id,
+                    'model' => config('ollama-laravel.embedding_model', 'nomic-embed-text:latest'),
+                ]);
+
+                // 4. Push to vector DB
+                $this->vectors->saveEmbedding(
+                    $document->id,
+                    $embedding,
+                    [
+                        'document_id' => $document->id,
+                        'chunk_id' => $chunk->id,
+                        'chunk_index' => $index,
+                        'content' => $chunkText,
+                    ]
+                );
+                logger()->info('EMBEDDING SAVED');
+            }
+
+            $document->markAsIndexed();
+
+            return new IngestResult(
+                documentId: $document->id,
+                chunks: count($chunks),
+                status: 'indexed'
+            );
+        } catch (\Throwable $e) {
+
+            $document->markAsFailed($e->getMessage());
+
+            throw $e;
+        }
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | RETRIEVAL
+    |--------------------------------------------------------------------------
+    */
+
     /**
-     * =========================
-     * MAIN RAG ANSWER PIPELINE
-     * =========================
+     * @return array<int, RetrievalResult>
      */
-    public function answer(
-        string $query,
-        ?string $sessionId = null,
-        int $limit = 5
-    ): array {
+    public function retrieve(string $query, int $limit = 5, ?callable $progressCallback = null, ?string $sessionId = null): array
+    {
+        return $this->retriever->search($query, $limit, $progressCallback, $sessionId);
+    }
 
-        $documents = $this->retrieve($query, $limit);
+    /*
+    |--------------------------------------------------------------------------
+    | RAG ANSWER PIPELINE
+    |--------------------------------------------------------------------------
+     */
 
-        if (empty($documents)) {
+    /**
+     * @param callable(string,int):void|null $progressCallback
+     * @return array{
+     *     answer:string,
+     *     documents:array<int, RetrievalResult>,
+     *     session_id:string|null
+     * }
+     */
+    public function answer(string $query, ?string $sessionId = null, int $limit = 5, ?callable $progressCallback = null): array
+    {
+        $results = $this->retrieve(
+            $query,
+            $limit,
+            function (string $label, int $percent) use ($progressCallback): void {
+
+                // logger()->info('RAG RETRIEVAL PROGRESS', [
+                //     'session_id' => $sessionId,
+                //     'label' => $label,
+                //     'percent' => $percent,
+                // ]);
+
+                if ($progressCallback !== null) {
+                    $progressCallback($label, $percent);
+                }
+            }
+        );
+
+        if (empty($results)) {
             return [
                 'answer' => "I couldn't find relevant information in your documents.",
                 'documents' => [],
@@ -95,177 +170,102 @@ class RagService
             ];
         }
 
-        if (config('rag.retrieval.re_rank', true)) {
-            $documents = $this->reRankDocuments($query, $documents);
-        }
+        $context = $this->buildContext($results);
 
-        $prompt = $this->composePrompt($query, $documents, $sessionId);
+        $prompt = $this->buildPrompt($query, $context, $sessionId);
 
         $answer = $this->generator->generate($prompt, [
             'query' => $query,
-            'documents' => $documents,
+            'context' => $context,
         ]);
 
         return [
             'answer' => $answer,
-            'documents' => $documents,
+            'documents' => $results,
             'session_id' => $sessionId,
+            'progressCallback' => $progressCallback,
         ];
     }
 
-    /**
-     * =========================
-     * CHUNKING (PRODUCTION SAFE)
-     * =========================
-     */
-    protected function chunkContent(
-        string $content,
-        int $chunkSize = 900,
-        int $overlap = 150
-    ): array {
+    /*
+    |--------------------------------------------------------------------------
+    | PROMPT BUILDER
+    |--------------------------------------------------------------------------
+    */
 
-        $content = preg_replace('/\s+/', ' ', trim($content));
+    protected function buildPrompt(string $query, string $context, ?string $sessionId): string
+    {
+        $system = 'You are a helpful AI assistant. Use ONLY provided context.';
 
-        if ($content === '') {
-            return [];
-        }
-
-        $chunks = [];
-        $start = 0;
-        $length = mb_strlen($content);
-
-        while ($start < $length) {
-            $chunks[] = mb_substr($content, $start, $chunkSize);
-            $start += ($chunkSize - $overlap);
-        }
-
-        return array_values(array_filter($chunks));
-    }
-
-    /**
-     * =========================
-     * PROMPT BUILDER
-     * =========================
-     */
-    protected function composePrompt(
-        string $query,
-        array $documents,
-        ?string $sessionId = null
-    ): string {
-
-        $system = config('rag.prompt.system', 'You are a helpful assistant.');
-
-        $context = collect($documents)
-            ->map(function ($doc, $i) {
-                return sprintf(
-                    "[%d] Source: %s\n%s",
-                    $i + 1,
-                    $doc['source'] ?? 'unknown',
-                    $doc['content'] ?? ''
-                );
-            })
-            ->join("\n\n");
-
-        $history = '';
-
-        if ($sessionId) {
-            $messages = $this->conversations->getMessages($sessionId);
-
-            if (!empty($messages)) {
-                $history = collect($messages)
-                    ->take(10) // prevent token explosion
-                    ->map(fn($m) => ucfirst($m['role']) . ': ' . $m['message'])
-                    ->join("\n");
-            }
-        }
-
-        return trim("
+        return <<<PROMPT
 {$system}
 
 Context:
 {$context}
 
-Conversation History:
-{$history}
-
 User Question:
 {$query}
 
-Instructions:
-- Use ONLY the provided context
+Rules:
+- Use only provided context
 - If unsure, say you don't know
-- Be concise and accurate
-");
+- Be concise
+PROMPT;
     }
 
     /**
-     * =========================
-     * RERANKING
-     * =========================
+     * @param array<int, RetrievalResult> $documents
      */
-    protected function reRankDocuments(string $query, array $documents): array
+    protected function buildContext(array $documents): string
     {
-        if (count($documents) <= 1) {
-            return $documents;
-        }
-
-        $prompt = $this->composeReRankPrompt($query, $documents);
-
-        try {
-            $response = $this->generator->generate($prompt, [
-                'query' => $query,
-                'documents' => $documents,
-            ]);
-
-            $order = $this->parseReRankResponse($response, count($documents));
-
-            if (!empty($order)) {
-                return array_map(fn($i) => $documents[$i], $order);
-            }
-        } catch (\Throwable $e) {
-            // fallback silently
-        }
-
-        return $documents;
-    }
-
-    protected function composeReRankPrompt(string $query, array $documents): string
-    {
-        $chunks = collect($documents)
+        return collect($documents)
             ->map(
-                fn($d, $i) =>
-                $i . ") " . Str::limit($d['content'] ?? '', 800)
+                fn (RetrievalResult $doc, int $i) => "[{$i}] {$doc->content}"
             )
-            ->join("\n\n");
-
-        return "
-Rank these documents by relevance to the query.
-
-Query:
-{$query}
-
-Documents:
-{$chunks}
-
-Return ONLY JSON array like:
-[0,1,2]
-";
+            ->implode("\n\n");
     }
 
-    protected function parseReRankResponse(string $response, int $count): array
-    {
-        $decoded = json_decode($response, true);
+    /*
+    |--------------------------------------------------------------------------
+    | CHUNKING (CLEAN + STABLE)
+    |--------------------------------------------------------------------------
+    */
 
-        if (is_array($decoded)) {
-            return array_values(array_filter($decoded, fn($i) => $i < $count));
+    /**
+     * @return array<int,string>
+     */
+    protected function chunkContent(string $content, int $size = 900, int $overlap = 150): array
+    {
+
+        $content = preg_replace('/\s+/', ' ', trim($content));
+
+        if (! $content) {
+            return [];
         }
 
-        preg_match_all('/\d+/', $response, $matches);
+        $sentences = preg_split('/(?<=[.!?])\s+/', $content);
 
-        $order = array_map('intval', $matches[0] ?? []);
+        if ($sentences === false) {
+            return [];
+        }
 
-        return array_values(array_unique(
-            array_filter($order, fn($i) => $i < $count)
-        ));
+        $chunks = [];
+        $chunk = '';
+
+        foreach ($sentences as $sentence) {
+
+            if (strlen($chunk.' '.$sentence) > $size) {
+                $chunks[] = trim($chunk);
+                $chunk = substr($chunk, -$overlap).' '.$sentence;
+            } else {
+                $chunk .= ' '.$sentence;
+            }
+        }
+
+        if ($chunk) {
+            $chunks[] = trim($chunk);
+        }
+
+        return $chunks;
     }
 }

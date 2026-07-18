@@ -2,67 +2,100 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Jobs\IndexDocumentJob;
+use App\Models\Document;
 use App\Services\RagService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 class RagController extends Controller
 {
-    public function ingest(Request $request)
+    /**
+     * INGEST DOCUMENT
+     */
+    public function ingest(Request $request): JsonResponse
     {
+        /** @var array{content?: string|null} $payload */
         $payload = $request->validate([
-            'source' => 'nullable|string',
             'content' => 'nullable|string|required_without:document',
-            'document' => 'nullable|file',
-            'metadata' => 'nullable',
+            'document' => 'nullable|file|max:20480',
         ]);
 
-        $metadata = $payload['metadata'] ?? [];
-        if (is_string($metadata)) {
-            $decoded = json_decode($metadata, true);
-            $metadata = is_array($decoded) ? $decoded : [];
-        }
-
+        /** @var UploadedFile|null $file */
+        $file = $request->files->get('document');
         $content = $payload['content'] ?? null;
-        $document = $request->file('document');
 
-        if ($document) {
-            $content = File::get($document->getRealPath());
-            if (empty($payload['source'])) {
-                $payload['source'] = $document->getClientOriginalName();
-            }
+        $safeName = null;
+        $path = null;
+
+        /**
+         * STEP 1: File handling
+         */
+        if ($file !== null) {
+            $originalName = $file->getClientOriginalName();
+
+            $safeName = (string) Str::uuid().'_'.$originalName;
+
+            $path = $file->storeAs('documents', $safeName, 'local');
+
+            $content = null;
         }
 
-        if (empty($content)) {
+        if ($file === null && ($content === null || $content === '')) {
             return response()->json([
-                'message' => 'Please provide document content or upload a file.',
+                'message' => 'Please provide a file or content.',
             ], 422);
         }
 
-        $source = $payload['source'] ?? 'manual-upload';
+        /**
+         * STEP 2: Create document
+         */
+        /** @var Document $document */
+        $document = Document::query()->create([
+            'filename' => $file !== null && $safeName !== null
+                ? $safeName
+                : 'manual_'.(string) Str::uuid(),
 
-        IndexDocumentJob::dispatch($source, $content, $metadata);
+            'original_filename' => $file?->getClientOriginalName(),
 
-        return response()->json(["status" => "queued", "source" => $source]);
+            'disk' => 'local',
+            'path' => $path,
+            'mime_type' => $file?->getMimeType(),
+            'size' => $file?->getSize() ?? 0,
+            'status' => 'uploaded',
+        ]);
+
+        /**
+         * STEP 3: Queue indexing
+         */
+        IndexDocumentJob::dispatch($document->id);
+
+        return response()->json([
+            'status' => 'queued',
+            'document_id' => $document->id,
+        ]);
     }
 
-    public function query(Request $request, RagService $ragService)
+    /**
+     * QUERY RAG
+     */
+    public function query(Request $request, RagService $ragService): JsonResponse
     {
-        $payload = Validator::make($request->all(), [
+        /** @var array{query: string, session_id?: string|null, top_k?: int} $validated */
+        $validated = $request->validate([
             'query' => 'required|string',
             'session_id' => 'nullable|string',
             'top_k' => 'nullable|integer|min:1|max:20',
-        ])->validated();
+        ]);
 
-        $result = $ragService->answer(
-            $payload['query'],
-            $payload['session_id'] ?? null,
-            $payload['top_k'] ?? null
+        $queryText = $validated['query'];
+        $sessionId = $validated['session_id'] ?? null;
+        $topK = $validated['top_k'] ?? 5;
+
+        return response()->json(
+            $ragService->answer($queryText, $sessionId, $topK)
         );
-
-        return response()->json($result);
     }
 }
