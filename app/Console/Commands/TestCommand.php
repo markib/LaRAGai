@@ -23,6 +23,7 @@ class TestCommand extends Command
             'DB_DATABASE' => base_path('database/testing.sqlite'),
             'QUEUE_CONNECTION' => 'sync',
             'SESSION_DRIVER' => 'array',
+            'CACHE_STORE' => 'array',
             'RAG_VECTOR_STORE' => 'local',
             'BROADCAST_CONNECTION' => 'null',
         ]);
