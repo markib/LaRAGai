@@ -1,19 +1,21 @@
-# Sample Documents for Ingestion
+# Sample Documents
 
-These files are ready to ingest into the RAG index using the Laravel command:
+Pre-built documents for testing ingestion into the RAG index.
+
+## Ingest
 
 ```bash
+# All files
 php artisan rag:ingest sample_documents
+
+# Single file
+php artisan rag:ingest sample_documents/faq.txt
 ```
 
-You can also ingest a single file:
+## Files
 
-```bash
-php artisan rag:ingest sample_documents/product-overview.txt
-```
-
-The sample documents include:
-
-- `meeting-notes.txt` — a short team meeting summary.
-- `product-overview.txt` — a product description and use cases.
-- `faq.txt` — common questions and answers.
+| File | Content |
+|------|---------|
+| `meeting-notes.txt` | Team meeting summary |
+| `product-overview.txt` | Product description and use cases |
+| `faq.txt` | Common questions and answers |
