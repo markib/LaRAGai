@@ -17,6 +17,8 @@ class ConversationList extends Component
 
     public ?string $currentSessionId = null;
 
+    public string $search = '';
+
     public function mount(?string $currentSessionId = null): void
     {
         $this->currentSessionId = $currentSessionId;
@@ -29,13 +31,26 @@ class ConversationList extends Component
         $this->loadConversations();
     }
 
+    public function updatedSearch(): void
+    {
+        $this->loadConversations();
+    }
+
     public function loadConversations(): void
     {
         try {
-            // Fetch all conversations
-            $collection = Conversation::query()
-                ->orderBy('created_at', 'desc')
-                ->get();
+            $query = Conversation::query()
+                ->orderBy('created_at', 'desc');
+
+            if (trim($this->search) !== '') {
+                $query->where(function ($q) {
+                    $term = trim($this->search);
+                    $q->where('session_id', 'like', "%{$term}%")
+                        ->orWhere('messages', 'like', "%{$term}%");
+                });
+            }
+
+            $collection = $query->get();
 
             /** @var Collection<int, Conversation> $collection */
             $this->conversations = $collection

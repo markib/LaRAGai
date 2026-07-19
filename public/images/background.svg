@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Deep Space Cinematic Base Gradient -->
+    <linearGradient id="cinematicDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#05030a" />
+      <stop offset="40%" stop-color="#0a0718" />
+      <stop offset="80%" stop-color="#0e0b24" />
+      <stop offset="100%" stop-color="#030206" />
+    </linearGradient>
+
+    <!-- Ultra-Wide Volumetric Atmospheric Glows -->
+    <filter id="nebulaGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="140" result="blur" />
+    </filter>
+    <filter id="coreNeon" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Brand Color Vectors -->
+    <linearGradient id="ragCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee" />
+      <stop offset="100%" stop-color="#34d399" />
+    </linearGradient>
+    <linearGradient id="ragPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc" />
+      <stop offset="100%" stop-color="#db2777" />
+    </linearGradient>
+    <linearGradient id="gridFade" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#2e2a72" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#1e1b4b" stop-opacity="0.0" />
+    </linearGradient>
+  </defs>
+
+  <!-- 1. Fullscreen Base Canvas -->
+  <rect width="1920" height="1080" fill="url(#cinematicDark)" />
+
+  <!-- 2. Ambient Sci-Fi Nebula Backdrops (High-performance blur vectors) -->
+  <g filter="url(#nebulaGlow)" opacity="0.5">
+    <!-- Deep Left Cyan Data Cluster -->
+    <circle cx="350" cy="450" r="450" fill="#06b6d4" opacity="0.22" />
+    <!-- Deep Right Purple Generative Cluster -->
+    <circle cx="1550" cy="550" r="500" fill="#7e22ce" opacity="0.18" />
+    <!-- Command Center Floor Reflective Ambient Hotspot -->
+    <ellipse cx="960" cy="950" rx="600" ry="120" fill="#ec4899" opacity="0.07" />
+  </g>
+
+  <!-- 3. Command Deck Perspective & Grid Geometry -->
+  <g opacity="0.4" stroke="url(#gridFade)" stroke-width="1.5">
+    <!-- Perspective Matrix Lines converging toward the horizon -->
+    <line x1="0" y1="200" x2="1920" y2="200" stroke-width="1" />
+    <line x1="0" y1="400" x2="1920" y2="400" />
+    <line x1="0" y1="650" x2="1920" y2="650" stroke-width="2" />
+    <line x1="0" y1="900" x2="1920" y2="900" stroke-width="2.5" />
+    
+    <!-- Vertical Data Streams / Room Architectural Framework -->
+    <line x1="250" y1="0" x2="100" y2="1080" />
+    <line x1="650" y1="0" x2="600" y2="1080" />
+    <line x1="1270" y1="0" x2="1320" y2="1080" />
+    <line x1="1670" y1="0" x2="1820" y2="1080" />
+  </g>
+
+  <!-- 4. Concentric Central UI Rings (Command Center Aesthetic) -->
+  <g fill="none" stroke-opacity="0.25" stroke-dasharray="10 15">
+    <ellipse cx="960" cy="850" rx="450" ry="90" stroke="#22d3ee" stroke-width="1.5" />
+    <ellipse cx="960" cy="850" rx="300" ry="60" stroke="#a78bfa" stroke-width="2" stroke-dasharray="none" stroke-opacity="0.1" />
+    <ellipse cx="960" cy="850" rx="600" ry="120" stroke="#22d3ee" stroke-width="1" />
+  </g>
+
+  <!-- 5. Floating Vector Document Chunks & Nodes -->
+  <g id="ui-nodes" opacity="0.6" filter="url(#coreNeon)">
+    <!-- Floating Data Bits Left -->
+    <rect x="520" y="480" width="30" height="40" rx="4" fill="#0f172a" stroke="url(#ragCyan)" stroke-width="2" />
+    <line x1="528" y1="490" x2="542" y2="490" stroke="#22d3ee" stroke-width="2" />
+    <line x1="528" y1="498" x2="542" y2="498" stroke="#22d3ee" stroke-width="2" />
+    <line x1="528" y1="506" x2="536" y2="506" stroke="#22d3ee" stroke-width="2" />
+    <circle cx="500" cy="380" r="5" fill="#34d399" />
+    
+    <!-- Floating Data Bits Right -->
+    <rect x="1360" y="520" width="30" height="40" rx="4" fill="#0f172a" stroke="url(#ragPurple)" stroke-width="2" />
+    <line x1="1368" y1="530" x2="1382" y2="530" stroke="#c084fc" stroke-width="2" />
+    <line x1="1368" y1="538" x2="1382" y2="538" stroke="#c084fc" stroke-width="2" />
+    <circle cx="1420" cy="420" r="6" fill="#db2777" />
+
+    <!-- Isometric Knowledge Cubes -->
+    <g transform="translate(720, 640) scale(0.9)" stroke="#22d3ee" stroke-width="1.5" fill="none">
+      <polygon points="0,-12 14,-20 28,-12 14,-4" />
+      <polygon points="0,-12 14,-4 14,12 0,4" />
+      <polygon points="14,-4 28,-12 28,4 14,12" />
+    </g>
+    <g transform="translate(1160, 600) scale(0.9)" stroke="#c084fc" stroke-width="1.5" fill="none">
+      <polygon points="0,-12 14,-20 28,-12 14,-4" />
+      <polygon points="0,-12 14,-4 14,12 0,4" />
+      <polygon points="14,-4 28,-12 28,4 14,12" />
+    </g>
+  </g>
+
+  <!-- 6. THE CENTRAL RAG HERO EMBLEM -->
+  <g id="hero-logo-emblem" transform="translate(835, 240)" filter="url(#coreNeon)">
+    <!-- Left Hemisphere Core -->
+    <g stroke="url(#ragCyan)" stroke-width="6" fill="none">
+      <path d="M 120,50 C 70,45 20,80 20,130 C 20,158 38,175 32,197 C 26,219 48,247 76,247 C 98,247 109,230 120,230" />
+      <path d="M 53,95 C 53,123 81,123 81,151" />
+      <path d="M 25,158 C 59,158 64,197 98,197" />
+    </g>
+    <!-- Right Hemisphere Core -->
+    <g stroke="url(#ragPurple)" stroke-width="6" fill="none">
+      <path d="M 130,50 C 180,45 230,80 230,130 C 230,158 212,175 218,197 C 224,219 202,247 174,247 C 152,247 141,230 130,230" />
+      <path d="M 197,95 C 197,123 169,123 169,151" />
+      <path d="M 225,158 C 191,158 186,197 152,197" />
+    </g>
+    <!-- Central Geometric Focus Portal "A" Anchor -->
+    <g transform="translate(93, 100)">
+      <polygon points="32,0 64,65 46,65 37,45 27,45 18,65 0,65" fill="#080612" />
+      <polygon points="32,0 64,65 46,65 37,45 27,45 18,65 0,65" stroke="#ffffff" stroke-width="2" fill="none" />
+      <polygon points="32,14 43,35 21,35" fill="url(#ragCyan)" />
+    </g>
+  </g>
+</svg>

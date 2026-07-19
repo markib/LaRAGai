@@ -25,7 +25,7 @@
         </div>
         <div class="flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-600">
             <span class="h-2.5 w-2.5 rounded-full" :class="isProcessing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'"></span>
-            Gemma · Hybrid search
+            {{ config('ollama.model', 'gemma2:2b') }} · Hybrid search
         </div>
     </header>
 
